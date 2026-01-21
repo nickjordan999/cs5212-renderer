@@ -108,6 +108,15 @@ public:
         }
         return sum;
     }
+
+    // Dot product
+    T dot(const vec& other) const {
+        T sum = 0;
+        for (size_t i = 0; i < N; ++i) {
+            sum += data[i] * other[i];
+        }
+        return sum;
+    }
 };
 
 // Scalar multiplication (commutative)

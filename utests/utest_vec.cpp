@@ -42,4 +42,11 @@ TEST_CASE("vec3 basic operations", "[vec3]") {
         vec3 v(3.0f, 4.0f, 0.0f);
         REQUIRE_THAT(v.length(), Catch::Matchers::WithinRel(5.0f, 0.001f));
     }
+
+    SECTION("Dot product") {
+        vec3 v1(1.0f, 2.0f, 3.0f);
+        vec3 v2(4.0f, 5.0f, 6.0f);
+        float dot_result = v1.dot(v2);
+        REQUIRE(dot_result == 32.0f);  // 1*4 + 2*5 + 3*6 = 4 + 10 + 18 = 32
+    }
 }
