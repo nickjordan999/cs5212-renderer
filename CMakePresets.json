@@ -2,12 +2,16 @@
     "version": 3,
     "configurePresets": [
 	{
-	    "name": "default",
-	    "binaryDir": "${sourceDir}/buildVCPkg",
-	    "cacheVariables": {
-		"CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
-	    }
-	},
+      "name": "default",
+      "displayName": "macOS (Ninja + vcpkg)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/buildVCPkg",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "/Users/nickjordan/school/cg/code/vcpkg/scripts/buildsystems/vcpkg.cmake",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++"
+      }
+    },
 	{
 	    "name": "dev",
 	    "binaryDir": "${sourceDir}/buildDev",
