@@ -117,6 +117,16 @@ public:
         }
         return sum;
     }
+
+    // Cross product (only for 3D vectors)
+    vec cross(const vec& other) const {
+        static_assert(N == 3, "Cross product is only defined for 3D vectors");
+        return vec(
+            data[1] * other[2] - data[2] * other[1],
+            data[2] * other[0] - data[0] * other[2],
+            data[0] * other[1] - data[1] * other[0]
+        );
+    }
 };
 
 // Scalar multiplication (commutative)

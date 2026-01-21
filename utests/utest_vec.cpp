@@ -49,4 +49,13 @@ TEST_CASE("vec3 basic operations", "[vec3]") {
         float dot_result = v1.dot(v2);
         REQUIRE(dot_result == 32.0f);  // 1*4 + 2*5 + 3*6 = 4 + 10 + 18 = 32
     }
+
+    SECTION("Cross product") {
+        vec3 v1(1.0f, 0.0f, 0.0f);
+        vec3 v2(0.0f, 1.0f, 0.0f);
+        vec3 cross_result = v1.cross(v2);
+        REQUIRE(cross_result[0] == 0.0f);
+        REQUIRE(cross_result[1] == 0.0f);
+        REQUIRE(cross_result[2] == 1.0f);
+    }
 }
