@@ -139,5 +139,36 @@ int main(int argc, char *argv[])
     }
     imData.write( "checkerboard.png" );
 
+
+    //
+    // Gradient
+    //
+
+    float sr = 1.0f;
+    float sg = 0.0f;
+    float sb = 0.0f;
+
+    float er = 0.0f;
+    float eg = 0.0f;
+    float eb = 1.0f;
+
+    for (unsigned int idx=0; idx<imData.get_height()*imData.get_width(); ++idx)
+    {
+        size_t x = idx % w;
+        size_t y = static_cast<size_t>( floor(idx / static_cast<float>(imData.get_width())) );
+
+
+        float t = y / static_cast<float>(imData.get_height()-1);
+
+        png::byte c[3] = { static_cast<png::byte>( (sr + (er - sr) * t) * 255.0f ),
+                           static_cast<png::byte>( (sg + (eg - sg) * t) * 255.0f ),
+                           static_cast<png::byte>( (sb + (eb - sb) * t) * 255.0f ) };
+
+        imData[y][x] = png::rgb_pixel( c[0], c[1], c[2] );
+    }
+
+    imData.write( "gradient.png" );
+
     exit(EXIT_SUCCESS);
+
 }
