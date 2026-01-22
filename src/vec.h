@@ -134,6 +134,21 @@ public:
         return diff.length_squared() <= epsilon * epsilon;
     }
 
+    // Exact equality comparison
+    bool operator==(const vec& other) const {
+        for (size_t i = 0; i < N; ++i) {
+            if (data[i] != other[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Inequality comparison
+    bool operator!=(const vec& other) const {
+        return !(*this == other);
+    }
+
     // Return a normalized (unit) vector
     vec normalized() const {
         T len = length();
