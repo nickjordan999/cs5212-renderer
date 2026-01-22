@@ -127,6 +127,21 @@ public:
             data[0] * other[1] - data[1] * other[0]
         );
     }
+
+    // Check if two vectors are within epsilon distance
+    bool near(const vec& other, T epsilon = T(1e-5)) const {
+        vec diff = other - *this;
+        return diff.length_squared() <= epsilon * epsilon;
+    }
+
+    // Return a normalized (unit) vector
+    vec normalized() const {
+        T len = length();
+        if (len == T(0)) {
+            return vec();  // Return zero vector if length is zero
+        }
+        return *this / len;
+    }
 };
 
 // Scalar multiplication (commutative)

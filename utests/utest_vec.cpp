@@ -58,4 +58,21 @@ TEST_CASE("vec3 basic operations", "[vec3]") {
         REQUIRE(cross_result[1] == 0.0f);
         REQUIRE(cross_result[2] == 1.0f);
     }
+
+    SECTION("Near method") {
+        vec3 v1(1.0f, 2.0f, 3.0f);
+        vec3 v2(1.1f, 2.1f, 3.1f);
+        REQUIRE(v1.near(v2, 0.2f));  // Distance is sqrt(0.1^2 * 3) ≈ 0.173 < 0.2
+        REQUIRE(!v1.near(v2, 0.1f)); // 0.173 > 0.1
+        REQUIRE(!v1.near(v2));       // Default epsilon 1e-5 is much smaller than 0.173
+    }
+
+    SECTION("Normalized method") {
+        vec3 v(3.0f, 4.0f, 0.0f);
+        vec3 unit = v.normalized();
+        REQUIRE_THAT(unit.length(), Catch::Matchers::WithinRel(1.0f, 0.001f));
+        REQUIRE_THAT(unit[0], Catch::Matchers::WithinRel(0.6f, 0.001f));  // 3/5
+        REQUIRE_THAT(unit[1], Catch::Matchers::WithinRel(0.8f, 0.001f));  // 4/5
+        REQUIRE_THAT(unit[2], Catch::Matchers::WithinRel(0.0f, 0.001f));
+    }
 }
