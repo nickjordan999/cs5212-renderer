@@ -10,3 +10,7 @@ target_link_libraries(cs4212-util PRIVATE Boost::program_options)
 target_link_libraries(cs4212-util PUBLIC glm::glm)
 target_link_libraries(cs4212-util PUBLIC PNG::PNG)
 
+# PNG Writer tool
+add_executable(pngWriter pngWriter.cpp)
+target_link_libraries(pngWriter cs4212-util)
+
