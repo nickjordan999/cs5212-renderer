@@ -25,6 +25,12 @@ TEST_CASE("FrameBuffer basic operations", "[FrameBuffer]") {
         REQUIRE_NOTHROW(fb(9, 19));
     }
 
+    SECTION("Set Pixel") {
+        vec3 color(0.1f, 0.2f, 0.3f);
+        fb.setPixel(2, 3, color);
+        REQUIRE(fb(2, 3) == color);
+    }
+
     SECTION("Set background") {
         vec3 bgColor(0.2f, 0.8f, 0.5f);
         fb.setBackground(bgColor);

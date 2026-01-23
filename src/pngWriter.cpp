@@ -87,6 +87,10 @@ int main(int argc, char* argv[]) {
     
     try {
         // Check if gradient mode
+        int width = std::stoi(argv[2]);
+        int height = std::stoi(argv[3]);
+        FrameBuffer fb(width, height);
+            
         if (std::string(argv[1]) == "gradient") {
             if (argc != 7) {
                 printUsage(argv[0]);
@@ -94,8 +98,7 @@ int main(int argc, char* argv[]) {
             }
             
             // Gradient mode
-            int width = std::stoi(argv[2]);
-            int height = std::stoi(argv[3]);
+
             std::string startColorStr = argv[4];
             std::string endColorStr = argv[5];
             float degrees = std::stof(argv[6]);
@@ -148,41 +151,10 @@ int main(int argc, char* argv[]) {
                     // Interpolate colors
                     vec3 pixelColor = startColor * (1.0f - t) + endColor * t;
                     
-                    png::byte r = static_cast<png::byte>(std::clamp(pixelColor[0] * 255.0f, 0.0f, 255.0f));
-                    png::byte g = static_cast<png::byte>(std::clamp(pixelColor[1] * 255.0f, 0.0f, 255.0f));
-                    png::byte b = static_cast<png::byte>(std::clamp(pixelColor[2] * 255.0f, 0.0f, 255.0f));
-                    
-                    image[y][x] = png::rgb_pixel(r, g, b);
+                    fb.setPixel(x, y, pixelColor);
                 }
             }
             
-            // Write to stdout
-            char tmpfile[] = "/tmp/pngWriter_XXXXXX";
-            int tmpfd = mkstemp(tmpfile);
-            if (tmpfd < 0) {
-                std::cerr << "Error creating temporary file" << std::endl;
-                return 1;
-            }
-            close(tmpfd);
-            
-            try {
-                image.write(tmpfile);
-                
-                std::ifstream infile(tmpfile, std::ios::binary);
-                if (!infile) {
-                    std::cerr << "Error reading temporary PNG file" << std::endl;
-                    std::remove(tmpfile);
-                    return 1;
-                }
-                
-                std::cout << infile.rdbuf();
-                infile.close();
-                
-                std::remove(tmpfile);
-            } catch (const std::exception& e) {
-                std::remove(tmpfile);
-                throw;
-            }
         } else if (std::string(argv[1]) == "multipoint") {
             if (argc < 6) {
                 std::cerr << "Multipoint mode requires at least 3 points" << std::endl;
@@ -216,8 +188,7 @@ int main(int argc, char* argv[]) {
             }
             
             // Create PNG image using inverse distance weighting
-            png::image<png::rgb_pixel> image(width, height);
-            
+
             for (size_t y = 0; y < height; ++y) {
                 for (size_t x = 0; x < width; ++x) {
                     // Calculate weighted average of colors using inverse distance weighting
@@ -255,42 +226,11 @@ int main(int argc, char* argv[]) {
                     if (totalWeight > 0.0f) {
                         pixelColor = pixelColor / totalWeight;
                     }
-                    
-                    png::byte r = static_cast<png::byte>(std::clamp(pixelColor[0] * 255.0f, 0.0f, 255.0f));
-                    png::byte g = static_cast<png::byte>(std::clamp(pixelColor[1] * 255.0f, 0.0f, 255.0f));
-                    png::byte b = static_cast<png::byte>(std::clamp(pixelColor[2] * 255.0f, 0.0f, 255.0f));
-                    
-                    image[y][x] = png::rgb_pixel(r, g, b);
+
+                    fb.setPixel(x, y, pixelColor);
                 }
             }
-            
-            // Write to stdout
-            char tmpfile[] = "/tmp/pngWriter_XXXXXX";
-            int tmpfd = mkstemp(tmpfile);
-            if (tmpfd < 0) {
-                std::cerr << "Error creating temporary file" << std::endl;
-                return 1;
-            }
-            close(tmpfd);
-            
-            try {
-                image.write(tmpfile);
-                
-                std::ifstream infile(tmpfile, std::ios::binary);
-                if (!infile) {
-                    std::cerr << "Error reading temporary PNG file" << std::endl;
-                    std::remove(tmpfile);
-                    return 1;
-                }
-                
-                std::cout << infile.rdbuf();
-                infile.close();
-                
-                std::remove(tmpfile);
-            } catch (const std::exception& e) {
-                std::remove(tmpfile);
-                throw;
-            }
+
         } else if (std::string(argv[1]) == "solid") {
             if (argc != 5) {
                 printUsage(argv[0]);
@@ -311,56 +251,40 @@ int main(int argc, char* argv[]) {
             vec3 color = parseHexColor(hexColor);
             
             // Create frame buffer and set background
-            FrameBuffer fb(width, height);
             fb.setBackground(color);
-            
-            // Create PNG image in memory
-            png::image<png::rgb_pixel> image(width, height);
-            
-            for (size_t y = 0; y < height; ++y) {
-                for (size_t x = 0; x < width; ++x) {
-                    const vec3& pixelColor = fb(x, y);
-                    png::byte r = static_cast<png::byte>(std::clamp(pixelColor[0] * 255.0f, 0.0f, 255.0f));
-                    png::byte g = static_cast<png::byte>(std::clamp(pixelColor[1] * 255.0f, 0.0f, 255.0f));
-                    png::byte b = static_cast<png::byte>(std::clamp(pixelColor[2] * 255.0f, 0.0f, 255.0f));
-                    image[y][x] = png::rgb_pixel(r, g, b);
-                }
-            }
-            
-            // Write to stdout by using a temporary file
-            char tmpfile[] = "/tmp/pngWriter_XXXXXX";
-            int tmpfd = mkstemp(tmpfile);
-            if (tmpfd < 0) {
-                std::cerr << "Error creating temporary file" << std::endl;
-                return 1;
-            }
-            close(tmpfd);
-            
-            try {
-                image.write(tmpfile);
-                
-                // Read temporary file and output to stdout
-                std::ifstream infile(tmpfile, std::ios::binary);
-                if (!infile) {
-                    std::cerr << "Error reading temporary PNG file" << std::endl;
-                    std::remove(tmpfile);
-                    return 1;
-                }
-                
-                std::cout << infile.rdbuf();
-                infile.close();
-                
-                // Clean up
-                std::remove(tmpfile);
-            } catch (const std::exception& e) {
-                std::remove(tmpfile);
-                throw;
-            }
         } else {
             // Unknown command
             std::cerr << "Unknown command: " << argv[1] << std::endl;
             printUsage(argv[0]);
             return 1;
+        }
+
+        // Write to stdout
+        char tmpfile[] = "/tmp/pngWriter_XXXXXX";
+        int tmpfd = mkstemp(tmpfile);
+        if (tmpfd < 0) {
+            std::cerr << "Error creating temporary file" << std::endl;
+            return 1;
+        }
+        close(tmpfd);
+        
+        try {
+            fb.writeToPng(tmpfile);
+            
+            std::ifstream infile(tmpfile, std::ios::binary);
+            if (!infile) {
+                std::cerr << "Error reading temporary PNG file" << std::endl;
+                std::remove(tmpfile);
+                return 1;
+            }
+            
+            std::cout << infile.rdbuf();
+            infile.close();
+            
+            std::remove(tmpfile);
+        } catch (const std::exception& e) {
+            std::remove(tmpfile);
+            throw;
         }
         
         return 0;

@@ -18,6 +18,10 @@ void FrameBuffer::setBackground(const vec3& color) {
     std::fill(data.begin(), data.end(), color);
 }
 
+void FrameBuffer::setPixel(size_t x, size_t y, const vec3& color) {
+    (*this)(x, y) = color;
+}
+
 void FrameBuffer::writeToPng(const std::string& filename) const {
     png::image<png::rgb_pixel> image(width, height);
     

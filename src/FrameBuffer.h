@@ -22,6 +22,8 @@ public:
     // Set all pixels to a background color
     void setBackground(const vec3& color);
 
+    void setPixel(size_t x, size_t y, const vec3 &color);
+
     // Write the frame buffer to a PNG file
     void writeToPng(const std::string& filename) const;
 
