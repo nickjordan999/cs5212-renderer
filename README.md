@@ -125,3 +125,27 @@ Then, when you restart your terminals, you should be able to run the vcpkg progr
 vcpkg
 ```
 
+### Running unit-tests
+
+Unit tests are found in `src/utests`.  To run the unit test suite run `ctest` from the build directory.
+
+### PNG Writer example app
+
+The pngWriter example app is for initial testing of the Frame Buffer and writing out to PNG format.  To just build the pngWriter app run:
+
+```
+cmake --preset default && cmake --build buildVCPkg --target pngWriter
+```
+
+Some example usage:
+
+```
+# create a solid color ping with width and height equal to 250 pixels
+./src/pngWriter solid 250 250 275d5e > solid.png
+
+# create a linearly interpolated 2 color gradient, rotated by 30 from vertical
+./src/pngWriter gradient 1000 1000 00FFFF FFFFAA 30 > gradient_30.png
+
+# create a gradient which blends color based on an initial set of point colors
+./pngWriter multipoint 200 200 50:50:FF0000 150:150:0000FF 100:100:00FFFF > 3pt.png
+```
