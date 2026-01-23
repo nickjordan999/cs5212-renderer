@@ -79,6 +79,144 @@ void printUsage(const char* programName) {
     std::cerr << "    Colors interpolated using inverse distance weighting" << std::endl;
 }
 
+void generateSolidColor(FrameBuffer& fb, int width, int height, const std::string& hexColor) {
+    // Validate dimensions
+    if (width <= 0 || height <= 0) {
+        std::cerr << "Error: width and height must be positive integers" << std::endl;
+        throw std::invalid_argument("Invalid dimensions");
+    }
+    
+    // Parse color
+    vec3 color = parseHexColor(hexColor);
+    
+    // Create frame buffer and set background
+    fb.setBackground(color);
+}
+
+void generateGradient(FrameBuffer& fb, int width, int height, const std::string& startColorStr, 
+                      const std::string& endColorStr, float degrees) {
+    // Validate dimensions
+    if (width <= 0 || height <= 0) {
+        std::cerr << "Error: width and height must be positive integers" << std::endl;
+        throw std::invalid_argument("Invalid dimensions");
+    }
+    
+    // Parse colors
+    vec3 startColor = parseHexColor(startColorStr);
+    vec3 endColor = parseHexColor(endColorStr);
+    
+    // Convert degrees to radians
+    float radians = degrees * M_PI / 180.0f;
+    float cosAngle = std::cos(radians);
+    float sinAngle = std::sin(radians);
+    
+    // Find the maximum distance along the gradient direction
+    // This ensures the gradient spans the full image
+    float maxDist = 0.0f;
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            float px = x - width / 2.0f;
+            float py = y - height / 2.0f;
+            float dist = px * cosAngle + py * sinAngle;
+            if (std::abs(dist) > maxDist) {
+                maxDist = std::abs(dist);
+            }
+        }
+    }
+    
+    if (maxDist == 0.0f) maxDist = 1.0f;
+    
+    // Generate gradient
+    for (size_t y = 0; y < height; ++y) {
+        for (size_t x = 0; x < width; ++x) {
+            float px = x - width / 2.0f;
+            float py = y - height / 2.0f;
+            float dist = px * cosAngle + py * sinAngle;
+            
+            // Normalize to [0, 1] range
+            float t = (dist + maxDist) / (2.0f * maxDist);
+            t = std::clamp(t, 0.0f, 1.0f);
+            
+            // Interpolate colors
+            vec3 pixelColor = startColor * (1.0f - t) + endColor * t;
+            
+            fb.setPixel(x, y, pixelColor);
+        }
+    }
+}
+
+void generateMultipoint(FrameBuffer& fb, int width, int height, int argc, char* argv[]) {
+    if (argc < 6) {
+        std::cerr << "Multipoint mode requires at least 3 points" << std::endl;
+        throw std::invalid_argument("Insufficient points");
+    }
+    
+    // Validate dimensions
+    if (width <= 0 || height <= 0) {
+        std::cerr << "Error: width and height must be positive integers" << std::endl;
+        throw std::invalid_argument("Invalid dimensions");
+    }
+    
+    // Parse color points
+    std::vector<ColorPoint> points;
+    for (int i = 4; i < argc; ++i) {
+        try {
+            points.push_back(parseColorPoint(argv[i]));
+        } catch (const std::exception& e) {
+            std::cerr << "Error parsing point " << (i - 3) << ": " << e.what() << std::endl;
+            throw;
+        }
+    }
+    
+    if (points.size() < 2) {
+        std::cerr << "Error: need at least 2 points for multipoint gradient" << std::endl;
+        throw std::invalid_argument("Insufficient points");
+    }
+    
+    // Create PNG image using inverse distance weighting
+    for (size_t y = 0; y < height; ++y) {
+        for (size_t x = 0; x < width; ++x) {
+            // Calculate weighted average of colors using inverse distance weighting
+            float px = static_cast<float>(x);
+            float py = static_cast<float>(y);
+            
+            vec3 pixelColor(0.0f, 0.0f, 0.0f);
+            float totalWeight = 0.0f;
+            
+            // Small epsilon to avoid division by zero when pixel is exactly on a point
+            const float epsilon = 1e-6f;
+            
+            for (const auto& point : points) {
+                float dx = px - point.x;
+                float dy = py - point.y;
+                float distSq = dx * dx + dy * dy;
+                float dist = std::sqrt(distSq);
+                
+                // Use inverse distance as weight (closer = higher weight)
+                // If exactly on point, use that color exclusively
+                float weight;
+                if (dist < epsilon) {
+                    pixelColor = point.color;
+                    totalWeight = 1.0f;
+                    break;  // If on exact point, use only that color
+                } else {
+                    weight = 1.0f / dist;
+                }
+                
+                pixelColor = pixelColor + point.color * weight;
+                totalWeight += weight;
+            }
+            
+            // Normalize to get weighted average
+            if (totalWeight > 0.0f) {
+                pixelColor = pixelColor / totalWeight;
+            }
+
+            fb.setPixel(x, y, pixelColor);
+        }
+    }
+}
+
 int main(int argc, char* argv[]) {
     if (argc < 4) {
         printUsage(argv[0]);
@@ -86,172 +224,29 @@ int main(int argc, char* argv[]) {
     }
     
     try {
-        // Check if gradient mode
         int width = std::stoi(argv[2]);
         int height = std::stoi(argv[3]);
         FrameBuffer fb(width, height);
-            
-        if (std::string(argv[1]) == "gradient") {
+        
+        std::string mode = argv[1];
+        
+        if (mode == "gradient") {
             if (argc != 7) {
                 printUsage(argv[0]);
                 return 1;
             }
+            generateGradient(fb, width, height, argv[4], argv[5], std::stof(argv[6]));
             
-            // Gradient mode
-
-            std::string startColorStr = argv[4];
-            std::string endColorStr = argv[5];
-            float degrees = std::stof(argv[6]);
+        } else if (mode == "multipoint") {
+            generateMultipoint(fb, width, height, argc, argv);
             
-            // Validate dimensions
-            if (width <= 0 || height <= 0) {
-                std::cerr << "Error: width and height must be positive integers" << std::endl;
-                return 1;
-            }
-            
-            // Parse colors
-            vec3 startColor = parseHexColor(startColorStr);
-            vec3 endColor = parseHexColor(endColorStr);
-            
-            // Convert degrees to radians
-            float radians = degrees * M_PI / 180.0f;
-            float cosAngle = std::cos(radians);
-            float sinAngle = std::sin(radians);
-            
-            // Create PNG image
-            png::image<png::rgb_pixel> image(width, height);
-            
-            // Find the maximum distance along the gradient direction
-            // This ensures the gradient spans the full image
-            float maxDist = 0.0f;
-            for (int y = 0; y < height; ++y) {
-                for (int x = 0; x < width; ++x) {
-                    float px = x - width / 2.0f;
-                    float py = y - height / 2.0f;
-                    float dist = px * cosAngle + py * sinAngle;
-                    if (std::abs(dist) > maxDist) {
-                        maxDist = std::abs(dist);
-                    }
-                }
-            }
-            
-            if (maxDist == 0.0f) maxDist = 1.0f;
-            
-            // Generate gradient
-            for (size_t y = 0; y < height; ++y) {
-                for (size_t x = 0; x < width; ++x) {
-                    float px = x - width / 2.0f;
-                    float py = y - height / 2.0f;
-                    float dist = px * cosAngle + py * sinAngle;
-                    
-                    // Normalize to [0, 1] range
-                    float t = (dist + maxDist) / (2.0f * maxDist);
-                    t = std::clamp(t, 0.0f, 1.0f);
-                    
-                    // Interpolate colors
-                    vec3 pixelColor = startColor * (1.0f - t) + endColor * t;
-                    
-                    fb.setPixel(x, y, pixelColor);
-                }
-            }
-            
-        } else if (std::string(argv[1]) == "multipoint") {
-            if (argc < 6) {
-                std::cerr << "Multipoint mode requires at least 3 points" << std::endl;
-                printUsage(argv[0]);
-                return 1;
-            }
-            
-            int width = std::stoi(argv[2]);
-            int height = std::stoi(argv[3]);
-            
-            // Validate dimensions
-            if (width <= 0 || height <= 0) {
-                std::cerr << "Error: width and height must be positive integers" << std::endl;
-                return 1;
-            }
-            
-            // Parse color points
-            std::vector<ColorPoint> points;
-            for (int i = 4; i < argc; ++i) {
-                try {
-                    points.push_back(parseColorPoint(argv[i]));
-                } catch (const std::exception& e) {
-                    std::cerr << "Error parsing point " << (i - 3) << ": " << e.what() << std::endl;
-                    return 1;
-                }
-            }
-            
-            if (points.size() < 2) {
-                std::cerr << "Error: need at least 2 points for multipoint gradient" << std::endl;
-                return 1;
-            }
-            
-            // Create PNG image using inverse distance weighting
-
-            for (size_t y = 0; y < height; ++y) {
-                for (size_t x = 0; x < width; ++x) {
-                    // Calculate weighted average of colors using inverse distance weighting
-                    float px = static_cast<float>(x);
-                    float py = static_cast<float>(y);
-                    
-                    vec3 pixelColor(0.0f, 0.0f, 0.0f);
-                    float totalWeight = 0.0f;
-                    
-                    // Small epsilon to avoid division by zero when pixel is exactly on a point
-                    const float epsilon = 1e-6f;
-                    
-                    for (const auto& point : points) {
-                        float dx = px - point.x;
-                        float dy = py - point.y;
-                        float distSq = dx * dx + dy * dy;
-                        float dist = std::sqrt(distSq);
-                        
-                        // Use inverse distance as weight (closer = higher weight)
-                        // If exactly on point, use that color exclusively
-                        float weight;
-                        if (dist < epsilon) {
-                            pixelColor = point.color;
-                            totalWeight = 1.0f;
-                            break;  // If on exact point, use only that color
-                        } else {
-                            weight = 1.0f / dist;
-                        }
-                        
-                        pixelColor = pixelColor + point.color * weight;
-                        totalWeight += weight;
-                    }
-                    
-                    // Normalize to get weighted average
-                    if (totalWeight > 0.0f) {
-                        pixelColor = pixelColor / totalWeight;
-                    }
-
-                    fb.setPixel(x, y, pixelColor);
-                }
-            }
-
-        } else if (std::string(argv[1]) == "solid") {
+        } else if (mode == "solid") {
             if (argc != 5) {
                 printUsage(argv[0]);
                 return 1;
             }
+            generateSolidColor(fb, width, height, argv[4]);
             
-            int width = std::stoi(argv[2]);
-            int height = std::stoi(argv[3]);
-            std::string hexColor = argv[4];
-            
-            // Validate dimensions
-            if (width <= 0 || height <= 0) {
-                std::cerr << "Error: width and height must be positive integers" << std::endl;
-                return 1;
-            }
-            
-            // Parse color
-            vec3 color = parseHexColor(hexColor);
-            
-            // Create frame buffer and set background
-            fb.setBackground(color);
         } else {
             // Unknown command
             std::cerr << "Unknown command: " << argv[1] << std::endl;
