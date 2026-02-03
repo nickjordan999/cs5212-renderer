@@ -1,4 +1,7 @@
 #include "FrameBuffer.h"
+#include "vec.h"
+#include "Ray.h"
+#include "Camera.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -77,6 +80,10 @@ void printUsage(const char* programName) {
     std::cerr << "    " << programName << " multipoint <width> <height> <point1> <point2> [<point3> ...]" << std::endl;
     std::cerr << "    Each point format: x:y:RRGGBB (e.g., 50:50:FF0000 for red at position 50,50)" << std::endl;
     std::cerr << "    Colors interpolated using inverse distance weighting" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "  Test camera mode:" << std::endl;
+    std::cerr << "    " << programName << " testcamera <width> <height> <focal_length>" << std::endl;
+    std::cerr << "    focal_length: Distance to the image plane" << std::endl;
 }
 
 void generateSolidColor(FrameBuffer& fb, int width, int height, const std::string& hexColor) {
@@ -217,6 +224,23 @@ void generateMultipoint(FrameBuffer& fb, int width, int height, int argc, char* 
     }
 }
 
+void testCamera(FrameBuffer& fb, int width, int height, float focal_length) {
+    PerspectiveBasicCamera camera(
+        vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, -1.0f), focal_length, 
+        static_cast<float>(width), static_cast<float>(height)
+    );
+    for (size_t y = 0; y < height; ++y) {
+        for (size_t x = 0; x < width; ++x) {
+            Ray ray = camera.generateRay(x, y);
+            fb.setPixel(x, y, vec3(
+                ray.getDirection().data[0] * 0.5f + 0.5f,
+                ray.getDirection().data[1] * 0.5f + 0.5f,
+                ray.getDirection().data[2] * 0.5f + 0.5f
+            ));
+        }
+    }
+}
+
 int main(int argc, char* argv[]) {
     if (argc < 4) {
         printUsage(argv[0]);
@@ -230,13 +254,19 @@ int main(int argc, char* argv[]) {
         
         std::string mode = argv[1];
         
-        if (mode == "gradient") {
+        if (mode == "testcamera") {
+            if (argc != 5) {
+                printUsage(argv[0]);
+                return 1;
+            }
+            float focal_length = std::stof(argv[4]);
+            testCamera(fb, width, height, focal_length);
+        } else if (mode == "gradient") {
             if (argc != 7) {
                 printUsage(argv[0]);
                 return 1;
             }
             generateGradient(fb, width, height, argv[4], argv[5], std::stof(argv[6]));
-            
         } else if (mode == "multipoint") {
             generateMultipoint(fb, width, height, argc, argv);
             
