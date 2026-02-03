@@ -2,6 +2,8 @@
 #include "vec.h"
 #include "Ray.h"
 #include "Camera.h"
+#include "Scene.h"
+#include "Sphere.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -225,18 +227,27 @@ void generateMultipoint(FrameBuffer& fb, int width, int height, int argc, char* 
 }
 
 void testCamera(FrameBuffer& fb, int width, int height, float focal_length) {
+    // Create camera
     PerspectiveBasicCamera camera(
-        vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, -1.0f), focal_length, 
+        vec3(0.0f, 0.0f, 3.0f), vec3(0.0f, 0.0f, -1.0f), focal_length, 
         static_cast<float>(width), static_cast<float>(height)
     );
+
+    // Create scene with some spheres
+    Scene scene;
+    scene.addSphere(Sphere(vec3(0.0f, 0.0f, -5.0f), 1.0f, vec3(1.0f, 0.0f, 0.0f)));     // Red sphere
+    scene.addSphere(Sphere(vec3(-2.5f, 0.0f, -6.0f), 0.667f, vec3(0.0f, 1.0f, 0.0f)));    // Green sphere
+    scene.addSphere(Sphere(vec3(2.5f, 0.0f, -6.0f), 0.667f, vec3(0.0f, 0.0f, 1.0f)));     // Blue sphere
+
+    // Background color (sky blue)
+    vec3 background(0.5f, 0.7f, 1.0f);
+
+    // Raytrace the scene
     for (size_t y = 0; y < height; ++y) {
         for (size_t x = 0; x < width; ++x) {
             Ray ray = camera.generateRay(x, y);
-            fb.setPixel(x, y, vec3(
-                ray.getDirection().data[0] * 0.5f + 0.5f,
-                ray.getDirection().data[1] * 0.5f + 0.5f,
-                ray.getDirection().data[2] * 0.5f + 0.5f
-            ));
+            vec3 color = scene.traceRay(ray, background);
+            fb.setPixel(x, y, color);
         }
     }
 }
