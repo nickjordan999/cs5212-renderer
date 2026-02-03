@@ -20,7 +20,8 @@ include(Catch)
 set(UTESTS 
   utest_Success
   utest_vec
-  utest_FrameBuffer)
+  utest_FrameBuffer
+  utest_Ray)
 
 # 
 # For each of the executables named in ${UTESTS}, compile them into a
