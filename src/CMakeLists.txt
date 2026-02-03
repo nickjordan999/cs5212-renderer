@@ -14,3 +14,6 @@ target_link_libraries(cs4212-util PUBLIC PNG::PNG)
 add_executable(pngWriter pngWriter.cpp)
 target_link_libraries(pngWriter cs4212-util)
 
+# Raytracer tool
+add_executable(raytracer raytracer.cpp)
+target_link_libraries(raytracer cs4212-util)
