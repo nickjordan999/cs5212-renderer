@@ -36,6 +36,24 @@ public:
         }
     }
 
+    // Trace a ray through the scene and return the full hit record
+    // Returns optional HitRecord if intersection occurs, nullopt otherwise
+    std::optional<HitRecord> traceRayWithHitInfo(const Ray& ray) const {
+        float closest_t = 1e6f;
+        std::optional<HitRecord> closest_hit;
+
+        // Check intersection with all spheres
+        for (const auto& sphere : spheres) {
+            auto hit = sphere.intersect(ray, 0.001f, closest_t);
+            if (hit.has_value()) {
+                closest_t = hit->t;
+                closest_hit = hit;
+            }
+        }
+
+        return closest_hit;
+    }
+
     // Get number of objects in scene
     size_t getObjectCount() const {
         return spheres.size();
