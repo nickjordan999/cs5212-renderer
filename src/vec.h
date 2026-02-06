@@ -53,6 +53,15 @@ public:
         return result;
     }
 
+    // Element-wise multiplication (Hadamard product)
+    vec operator*(const vec& other) const {
+        vec result;
+        for (size_t i = 0; i < N; ++i) {
+            result[i] = data[i] * other[i];
+        }
+        return result;
+    }
+
     // Scalar division
     vec operator/(T scalar) const {
         vec result;

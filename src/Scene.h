@@ -2,6 +2,7 @@
 #define SCENE_H
 
 #include "Sphere.h"
+#include "Light.h"
 #include <vector>
 #include <optional>
 
@@ -10,6 +11,16 @@ public:
     // Add a sphere to the scene
     void addSphere(const Sphere& sphere) {
         spheres.push_back(sphere);
+    }
+
+    // Add a light to the scene
+    void addLight(const Light& light) {
+        lights.push_back(light);
+    }
+
+    // Get lights in the scene
+    const std::vector<Light>& getLights() const {
+        return lights;
     }
 
     // Trace a ray through the scene and return the color
@@ -61,6 +72,7 @@ public:
 
 private:
     std::vector<Sphere> spheres;
+    std::vector<Light> lights;
 };
 
 #endif // SCENE_H

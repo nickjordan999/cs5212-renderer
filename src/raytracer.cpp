@@ -3,7 +3,9 @@
 #include "Ray.h"
 #include "Camera.h"
 #include "Scene.h"
+#include "ScenePresets.h"
 #include "Sphere.h"
+#include "Light.h"
 #include <iostream>
 #include <fstream>
 #include <cstdio>
@@ -13,37 +15,49 @@
 
 void printUsage(const char* programName) {
     std::cerr << "Usage:" << std::endl;
-    std::cerr << "  " << programName << " [mode] <width> <height> <focal_length>" << std::endl;
+    std::cerr << "  " << programName << " [mode] <width> <height> <focal_length> [scene]" << std::endl;
     std::cerr << std::endl;
     std::cerr << "  Modes:" << std::endl;
     std::cerr << "    (default/render)     - Renders scene with material colors" << std::endl;
     std::cerr << "    normalshader         - Renders scene with normal visualization" << std::endl;
+    std::cerr << "    diffuse              - Renders scene with diffuse shading" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "  Scenes:" << std::endl;
+    std::cerr << "    test                 - Standard test scene with colored spheres (default)" << std::endl;
+    std::cerr << "    single_sphere        - Single purple sphere" << std::endl;
+    std::cerr << "    grid                 - 3x3 grid of spheres" << std::endl;
     std::cerr << std::endl;
     std::cerr << "  Examples:" << std::endl;
     std::cerr << "    " << programName << " 800 600 0.25" << std::endl;
     std::cerr << "    " << programName << " normalshader 800 600 0.25" << std::endl;
+    std::cerr << "    " << programName << " diffuse 800 600 0.25 grid" << std::endl;
 }
 
-void render(FrameBuffer& fb, int width, int height, float focal_length) {
+// Load a scene by preset name
+Scene loadScene(const std::string& preset_name) {
+    if (preset_name == "test") {
+        return ScenePresets::createTestScene();
+    } else if (preset_name == "lit_test") {
+        return ScenePresets::createLitTestScene();
+    } else if (preset_name == "single_sphere") {
+        return ScenePresets::createSingleSphereScene();
+    } else if (preset_name == "grid") {
+        return ScenePresets::createGridScene();
+    } else {
+        std::cerr << "Unknown scene preset: " << preset_name << std::endl;
+        throw std::invalid_argument("Invalid scene preset");
+    }
+}
+
+void render(FrameBuffer& fb, int width, int height, float focal_length, const std::string& scene_preset) {
     // Create camera
     PerspectiveBasicCamera camera(
         vec3(0.0f, 0.0f, 3.0f), vec3(0.0f, 0.0f, -1.0f), focal_length, 
         static_cast<float>(width), static_cast<float>(height)
     );
 
-    // Create scene with some spheres
-    Scene scene;
-
-    // Large central sphere
-    scene.addSphere(Sphere(vec3(0.0f, 0.0f, -5.0f), 1.0f, vec3(1.0f, 0.0f, 0.0f)));     // Red sphere
-
-    // Medium spheres to the sides
-    scene.addSphere(Sphere(vec3(-2.5f, 0.0f, -6.0f), 0.667f, vec3(0.0f, 1.0f, 0.0f)));    // Green sphere
-    scene.addSphere(Sphere(vec3(2.5f, 0.0f, -6.0f), 0.667f, vec3(0.0f, 0.0f, 1.0f)));     // Blue sphere
-
-    // Small spheres on the top and bottom
-    scene.addSphere(Sphere(vec3(0.0f, -2.0f, -6.0f), 0.333f, vec3(1.0f, 1.0f, 1.0f)));    // Green sphere
-    scene.addSphere(Sphere(vec3(0.0f, 2.0f, -6.0f), 0.333f, vec3(0.0f, 0.0f, 0.0f)));     // Blue sphere
+    // Load scene preset
+    Scene scene = loadScene(scene_preset);
 
     // Background color (sky blue)
     vec3 background(0.5f, 0.7f, 1.0f);
@@ -58,26 +72,15 @@ void render(FrameBuffer& fb, int width, int height, float focal_length) {
     }
 }
 
-void normalShader(FrameBuffer& fb, int width, int height, float focal_length) {
+void normalShader(FrameBuffer& fb, int width, int height, float focal_length, const std::string& scene_preset) {
     // Create camera
     PerspectiveBasicCamera camera(
         vec3(0.0f, 0.0f, 3.0f), vec3(0.0f, 0.0f, -1.0f), focal_length, 
         static_cast<float>(width), static_cast<float>(height)
     );
 
-    // Create scene with some spheres
-    Scene scene;
-
-    // Large central sphere
-    scene.addSphere(Sphere(vec3(0.0f, 0.0f, -5.0f), 1.0f, vec3(1.0f, 0.0f, 0.0f)));     // Red sphere
-
-    // Medium spheres to the sides
-    scene.addSphere(Sphere(vec3(-2.5f, 0.0f, -6.0f), 0.667f, vec3(0.0f, 1.0f, 0.0f)));    // Green sphere
-    scene.addSphere(Sphere(vec3(2.5f, 0.0f, -6.0f), 0.667f, vec3(0.0f, 0.0f, 1.0f)));     // Blue sphere
-
-    // Small spheres on the top and bottom
-    scene.addSphere(Sphere(vec3(0.0f, -2.0f, -6.0f), 0.333f, vec3(1.0f, 1.0f, 1.0f)));    // Green sphere
-    scene.addSphere(Sphere(vec3(0.0f, 2.0f, -6.0f), 0.333f, vec3(0.0f, 0.0f, 0.0f)));     // Blue sphere
+    // Load scene preset
+    Scene scene = loadScene(scene_preset);
 
     // Background color
     vec3 background(0.2f, 0.2f, 0.2f);
@@ -107,16 +110,73 @@ void normalShader(FrameBuffer& fb, int width, int height, float focal_length) {
     }
 }
 
+void diffuseShader(FrameBuffer& fb, int width, int height, float focal_length, const std::string& scene_preset) {
+    // Create camera
+    PerspectiveBasicCamera camera(
+        vec3(0.0f, 0.0f, 3.0f), vec3(0.0f, 0.0f, -1.0f), focal_length, 
+        static_cast<float>(width), static_cast<float>(height)
+    );
+
+    // Load scene preset (for diffuse rendering, use lit version if available)
+    Scene scene;
+    if (scene_preset == "test") {
+        scene = ScenePresets::createLitTestScene();
+    } else {
+        scene = loadScene(scene_preset);
+    }
+
+    // Background color
+    vec3 background(0.2f, 0.2f, 0.2f);
+
+    // Raytrace the scene with diffuse shading
+    for (size_t y = 0; y < height; ++y) {
+        for (size_t x = 0; x < width; ++x) {
+            Ray ray = camera.generateRay(x, y);
+            auto hit = scene.traceRayWithHitInfo(ray);
+
+            vec3 color;
+            if (hit.has_value()) {
+                // Diffuse shading: sum contributions from all lights
+                vec3 shaded_color(0.0f, 0.0f, 0.0f);
+                
+                const auto& lights = scene.getLights();
+                for (const auto& light : lights) {
+                    // Calculate light direction (normalized)
+                    vec3 light_dir = (light.getPosition() - hit->point).normalized();
+                    
+                    // Calculate diffuse factor using Lambert's cosine law
+                    // Only positive dot products contribute (front-facing surfaces)
+                    float diffuse_factor = std::max(0.0f, hit->normal.dot(light_dir));
+                    
+                    // Accumulate light contribution: material_color * light_intensity * diffuse_factor
+                    shaded_color = shaded_color + (hit->material * light.getIntensity() * diffuse_factor);
+                }
+                
+                // Add ambient light
+                vec3 ambient(0.1f, 0.1f, 0.1f);
+                shaded_color = shaded_color + (hit->material * ambient);
+                
+                color = shaded_color;
+            } else {
+                color = background;
+            }
+
+            fb.setPixel(x, y, color);
+        }
+    }
+}
+
 int main(int argc, char* argv[]) {
-    std::string mode = "testcamera";
+    std::string mode = "render";
     int width = 0;
     int height = 0;
     float focal_length = 0.25f;
+    std::string scene_preset = "test";
 
     // Parse arguments
     if (argc == 3) {
         // Format: raytracer <width> <height>
-        // Uses default mode (testcamera) and focal_length (0.25)
+        // Uses default mode (render), focal_length (0.25), and scene (test)
         try {
             width = std::stoi(argv[1]);
             height = std::stoi(argv[2]);
@@ -126,7 +186,6 @@ int main(int argc, char* argv[]) {
         }
     } else if (argc == 4) {
         // Format: raytracer <width> <height> <focal_length>
-        // or: raytracer <mode> <width> <height> (less common, but try this first)
         try {
             width = std::stoi(argv[1]);
             height = std::stoi(argv[2]);
@@ -137,11 +196,33 @@ int main(int argc, char* argv[]) {
         }
     } else if (argc == 5) {
         // Format: raytracer <mode> <width> <height> <focal_length>
+        // or: raytracer <width> <height> <focal_length> <scene>
         mode = argv[1];
         try {
             width = std::stoi(argv[2]);
             height = std::stoi(argv[3]);
             focal_length = std::stof(argv[4]);
+        } catch (...) {
+            // Try alternate format: width height focal_length scene
+            try {
+                width = std::stoi(argv[1]);
+                height = std::stoi(argv[2]);
+                focal_length = std::stof(argv[3]);
+                scene_preset = argv[4];
+                mode = "render";
+            } catch (...) {
+                printUsage(argv[0]);
+                return 1;
+            }
+        }
+    } else if (argc == 6) {
+        // Format: raytracer <mode> <width> <height> <focal_length> <scene>
+        mode = argv[1];
+        try {
+            width = std::stoi(argv[2]);
+            height = std::stoi(argv[3]);
+            focal_length = std::stof(argv[4]);
+            scene_preset = argv[5];
         } catch (...) {
             printUsage(argv[0]);
             return 1;
@@ -160,9 +241,11 @@ int main(int argc, char* argv[]) {
         FrameBuffer fb(width, height);
 
         if (mode == "render") {
-            render(fb, width, height, focal_length);
+            render(fb, width, height, focal_length, scene_preset);
         } else if (mode == "normalshader") {
-            normalShader(fb, width, height, focal_length);
+            normalShader(fb, width, height, focal_length, scene_preset);
+        } else if (mode == "diffuse") {
+            diffuseShader(fb, width, height, focal_length, scene_preset);
         } else {
             std::cerr << "Unknown mode: " << mode << std::endl;
             printUsage(argv[0]);
