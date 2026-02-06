@@ -3,11 +3,32 @@
 
 #include "Sphere.h"
 #include "Light.h"
+#include "Camera.h"
 #include <vector>
 #include <optional>
+#include <memory>
 
 class Scene {
 public:
+    Scene() : camera(nullptr) {}
+
+    // Set the camera for this scene
+    void setCamera(std::shared_ptr<Camera> cam) {
+        camera = cam;
+    }
+
+    // Get the camera for this scene
+    const Camera& getCamera() const {
+        if (!camera) {
+            throw std::runtime_error("Scene has no camera set");
+        }
+        return *camera;
+    }
+
+    // Check if a camera is set
+    bool hasCamera() const {
+        return camera != nullptr;
+    }
     // Add a sphere to the scene
     void addSphere(const Sphere& sphere) {
         spheres.push_back(sphere);
@@ -73,6 +94,7 @@ public:
 private:
     std::vector<Sphere> spheres;
     std::vector<Light> lights;
+    std::shared_ptr<Camera> camera;
 };
 
 #endif // SCENE_H

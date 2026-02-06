@@ -2,9 +2,11 @@
 #define SCENEPRESETS_H
 
 #include "Scene.h"
+#include "Camera.h"
 #include "Sphere.h"
 #include "Light.h"
 #include "vec.h"
+#include <memory>
 
 // Utility class for creating pre-configured scenes
 class ScenePresets {
@@ -24,6 +26,11 @@ public:
         scene.addSphere(Sphere(vec3(0.0f, -2.0f, -6.0f), 0.333f, vec3(1.0f, 1.0f, 1.0f)));    // White sphere
         scene.addSphere(Sphere(vec3(0.0f, 2.0f, -6.0f), 0.333f, vec3(1.0f, 1.0f, 0.0f)));     // Yellow sphere
 
+        // Add default camera
+        scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
+            vec3(0.0f, 0.0f, 3.0f), vec3(0.0f, 0.0f, -1.0f), 0.25f, 800.0f, 600.0f
+        ));
+
         return scene;
     }
 
@@ -42,6 +49,12 @@ public:
     static Scene createSingleSphereScene() {
         Scene scene;
         scene.addSphere(Sphere(vec3(0.0f, 0.0f, -5.0f), 1.5f, vec3(0.8f, 0.2f, 0.9f)));  // Purple sphere
+        
+        // Add default camera
+        scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
+            vec3(0.0f, 0.0f, 3.0f), vec3(0.0f, 0.0f, -1.0f), 0.25f, 800.0f, 600.0f
+        ));
+        
         return scene;
     }
 
@@ -67,6 +80,11 @@ public:
                 scene.addSphere(Sphere(vec3(x, y, z), radius, vec3(r, g, b)));
             }
         }
+
+        // Add default camera
+        scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
+            vec3(0.0f, 0.0f, 3.0f), vec3(0.0f, 0.0f, -1.0f), 0.25f, 800.0f, 600.0f
+        ));
 
         return scene;
     }

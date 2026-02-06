@@ -4,6 +4,7 @@
 #include "Camera.h"
 #include "Scene.h"
 #include "ScenePresets.h"
+#include "Shader.h"
 #include "Sphere.h"
 #include "Light.h"
 #include <iostream>
@@ -12,29 +13,31 @@
 #include <cmath>
 #include <unistd.h>
 #include <string>
+#include <memory>
+#include <boost/program_options.hpp>
 
-void printUsage(const char* programName) {
-    std::cerr << "Usage:" << std::endl;
-    std::cerr << "  " << programName << " [mode] <width> <height> <focal_length> [scene] [raysPerPixel]" << std::endl;
+namespace po = boost::program_options;
+
+void printUsage(const std::string& programName, const po::options_description& desc) {
+    std::cerr << "Usage: " << programName << " [OPTIONS]" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "  Modes:" << std::endl;
-    std::cerr << "    (default/render)     - Renders scene with material colors" << std::endl;
-    std::cerr << "    normalshader         - Renders scene with normal visualization" << std::endl;
-    std::cerr << "    diffuse              - Renders scene with diffuse shading" << std::endl;
+    std::cerr << "Available Scene Presets:" << std::endl;
+    std::cerr << "  test                 - Standard test scene with colored spheres (default)" << std::endl;
+    std::cerr << "  lit_test             - Test scene with lighting for diffuse rendering" << std::endl;
+    std::cerr << "  single_sphere        - Single purple sphere" << std::endl;
+    std::cerr << "  grid                 - 3x3 grid of spheres" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "  Scenes:" << std::endl;
-    std::cerr << "    test                 - Standard test scene with colored spheres (default)" << std::endl;
-    std::cerr << "    single_sphere        - Single purple sphere" << std::endl;
-    std::cerr << "    grid                 - 3x3 grid of spheres" << std::endl;
+    std::cerr << "Available Shaders:" << std::endl;
+    std::cerr << "  render               - Renders scene with material colors (default)" << std::endl;
+    std::cerr << "  normalshader         - Renders scene with normal visualization" << std::endl;
+    std::cerr << "  diffuse              - Renders scene with diffuse shading" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "  Anti-aliasing:" << std::endl;
-    std::cerr << "    raysPerPixel         - Number of rays per pixel for anti-aliasing (default: 1, no AA)" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "  Examples:" << std::endl;
-    std::cerr << "    " << programName << " 800 600 0.25" << std::endl;
-    std::cerr << "    " << programName << " normalshader 800 600 0.25" << std::endl;
-    std::cerr << "    " << programName << " diffuse 800 600 0.25 grid" << std::endl;
-    std::cerr << "    " << programName << " 800 600 0.25 test 4" << std::endl;
+    std::cerr << "Options:" << std::endl;
+    std::cerr << desc << std::endl;
+    std::cerr << "Examples:" << std::endl;
+    std::cerr << "  " << programName << " --width 1024 --height 768" << std::endl;
+    std::cerr << "  " << programName << " -w 800 -h 600 -s diffuse -p grid --rays-per-pixel 16" << std::endl;
+    std::cerr << "  " << programName << " --anti-aliasing off" << std::endl;
 }
 
 // Load a scene by preset name
@@ -53,264 +56,110 @@ Scene loadScene(const std::string& preset_name) {
     }
 }
 
-void render(FrameBuffer& fb, int width, int height, float focal_length, const std::string& scene_preset, int raysPerPixel) {
-    // Create camera
-    PerspectiveBasicCamera camera(
-        vec3(0.0f, 0.0f, 3.0f), vec3(0.0f, 0.0f, -1.0f), focal_length, 
-        static_cast<float>(width), static_cast<float>(height)
-    );
-
-    // Load scene preset
-    Scene scene = loadScene(scene_preset);
-
-    // Background color (sky blue)
-    vec3 background(0.5f, 0.7f, 1.0f);
-
-    // Raytrace the scene
-    for (size_t y = 0; y < height; ++y) {
-        for (size_t x = 0; x < width; ++x) {
-            vec3 color(0.0f, 0.0f, 0.0f);
-            
-            // Sample multiple rays per pixel for anti-aliasing
-            for (int sample = 0; sample < raysPerPixel; ++sample) {
-                Ray ray = (raysPerPixel > 1) ? camera.generateRayAA(x, y) : camera.generateRay(x, y);
-                color = color + scene.traceRay(ray, background);
-            }
-            
-            // Average the samples
-            color = color * (1.0f / static_cast<float>(raysPerPixel));
-            fb.setPixel(x, y, color);
-        }
-    }
-}
-
-void normalShader(FrameBuffer& fb, int width, int height, float focal_length, const std::string& scene_preset, int raysPerPixel) {
-    // Create camera
-    PerspectiveBasicCamera camera(
-        vec3(0.0f, 0.0f, 3.0f), vec3(0.0f, 0.0f, -1.0f), focal_length, 
-        static_cast<float>(width), static_cast<float>(height)
-    );
-
-    // Load scene preset
-    Scene scene = loadScene(scene_preset);
-
-    // Background color
-    vec3 background(0.2f, 0.2f, 0.2f);
-
-    // Raytrace the scene with normal visualization
-    for (size_t y = 0; y < height; ++y) {
-        for (size_t x = 0; x < width; ++x) {
-            vec3 color(0.0f, 0.0f, 0.0f);
-            
-            // Sample multiple rays per pixel for anti-aliasing
-            for (int sample = 0; sample < raysPerPixel; ++sample) {
-                Ray ray = (raysPerPixel > 1) ? camera.generateRayAA(x, y) : camera.generateRay(x, y);
-                auto hit = scene.traceRayWithHitInfo(ray);
-
-                vec3 sample_color;
-                if (hit.has_value()) {
-                    // Map normal direction to color
-                    // Normal components range from -1 to 1, we map to 0 to 1
-                    vec3 normal = hit->normal;
-                    sample_color = vec3(
-                        (normal[0] + 1.0f) * 0.5f,
-                        (normal[1] + 1.0f) * 0.5f,
-                        (normal[2] + 1.0f) * 0.5f
-                    );
-                } else {
-                    sample_color = background;
-                }
-                
-                color = color + sample_color;
-            }
-            
-            // Average the samples
-            color = color * (1.0f / static_cast<float>(raysPerPixel));
-            fb.setPixel(x, y, color);
-        }
-    }
-}
-
-void diffuseShader(FrameBuffer& fb, int width, int height, float focal_length, const std::string& scene_preset, int raysPerPixel) {
-    // Create camera
-    PerspectiveBasicCamera camera(
-        vec3(0.0f, 0.0f, 3.0f), vec3(0.0f, 0.0f, -1.0f), focal_length, 
-        static_cast<float>(width), static_cast<float>(height)
-    );
-
-    // Load scene preset (for diffuse rendering, use lit version if available)
-    Scene scene;
-    if (scene_preset == "test") {
-        scene = ScenePresets::createLitTestScene();
+// Create a shader based on the rendering mode
+std::unique_ptr<Shader> createShader(const std::string& mode, const Scene& scene) {
+    if (mode == "render") {
+        return std::make_unique<SimpleShader>(scene);
+    } else if (mode == "normalshader") {
+        return std::make_unique<NormalShader>(scene);
+    } else if (mode == "diffuse") {
+        return std::make_unique<DiffuseShader>(scene);
     } else {
-        scene = loadScene(scene_preset);
-    }
-
-    // Background color
-    vec3 background(0.2f, 0.2f, 0.2f);
-
-    // Raytrace the scene with diffuse shading
-    for (size_t y = 0; y < height; ++y) {
-        for (size_t x = 0; x < width; ++x) {
-            vec3 color(0.0f, 0.0f, 0.0f);
-            
-            // Sample multiple rays per pixel for anti-aliasing
-            for (int sample = 0; sample < raysPerPixel; ++sample) {
-                Ray ray = (raysPerPixel > 1) ? camera.generateRayAA(x, y) : camera.generateRay(x, y);
-                auto hit = scene.traceRayWithHitInfo(ray);
-
-                vec3 sample_color;
-                if (hit.has_value()) {
-                    // Diffuse shading: sum contributions from all lights
-                    vec3 shaded_color(0.0f, 0.0f, 0.0f);
-                    
-                    const auto& lights = scene.getLights();
-                    for (const auto& light : lights) {
-                        // Calculate light direction (normalized)
-                        vec3 light_dir = (light.getPosition() - hit->point).normalized();
-                        
-                        // Calculate diffuse factor using Lambert's cosine law
-                        // Only positive dot products contribute (front-facing surfaces)
-                        float diffuse_factor = std::max(0.0f, hit->normal.dot(light_dir));
-                        
-                        // Accumulate light contribution: material_color * light_intensity * diffuse_factor
-                        shaded_color = shaded_color + (hit->material * light.getIntensity() * diffuse_factor);
-                    }
-                    
-                    // Add ambient light
-                    vec3 ambient(0.1f, 0.1f, 0.1f);
-                    shaded_color = shaded_color + (hit->material * ambient);
-                    
-                    sample_color = shaded_color;
-                } else {
-                    sample_color = background;
-                }
-                
-                color = color + sample_color;
-            }
-            
-            // Average the samples
-            color = color * (1.0f / static_cast<float>(raysPerPixel));
-            fb.setPixel(x, y, color);
-        }
+        throw std::invalid_argument("Unknown shader mode: " + mode);
     }
 }
 
 int main(int argc, char* argv[]) {
-    std::string mode = "render";
-    int width = 0;
-    int height = 0;
-    float focal_length = 0.25f;
-    std::string scene_preset = "test";
-    int raysPerPixel = 1;
-
-    // Parse arguments
-    if (argc == 3) {
-        // Format: raytracer <width> <height>
-        // Uses default mode (render), focal_length (0.25), scene (test), and raysPerPixel (1)
-        try {
-            width = std::stoi(argv[1]);
-            height = std::stoi(argv[2]);
-        } catch (...) {
-            printUsage(argv[0]);
-            return 1;
-        }
-    } else if (argc == 4) {
-        // Format: raytracer <width> <height> <focal_length>
-        try {
-            width = std::stoi(argv[1]);
-            height = std::stoi(argv[2]);
-            focal_length = std::stof(argv[3]);
-        } catch (...) {
-            printUsage(argv[0]);
-            return 1;
-        }
-    } else if (argc == 5) {
-        // Format: raytracer <mode> <width> <height> <focal_length>
-        // or: raytracer <width> <height> <focal_length> <scene>
-        mode = argv[1];
-        try {
-            width = std::stoi(argv[2]);
-            height = std::stoi(argv[3]);
-            focal_length = std::stof(argv[4]);
-        } catch (...) {
-            // Try alternate format: width height focal_length scene
-            try {
-                width = std::stoi(argv[1]);
-                height = std::stoi(argv[2]);
-                focal_length = std::stof(argv[3]);
-                scene_preset = argv[4];
-                mode = "render";
-            } catch (...) {
-                printUsage(argv[0]);
-                return 1;
-            }
-        }
-    } else if (argc == 6) {
-        // Format: raytracer <mode> <width> <height> <focal_length> <scene>
-        // or: raytracer <width> <height> <focal_length> <scene> <raysPerPixel>
-        mode = argv[1];
-        try {
-            width = std::stoi(argv[2]);
-            height = std::stoi(argv[3]);
-            focal_length = std::stof(argv[4]);
-            scene_preset = argv[5];
-        } catch (...) {
-            // Try alternate format: width height focal_length scene raysPerPixel
-            try {
-                width = std::stoi(argv[1]);
-                height = std::stoi(argv[2]);
-                focal_length = std::stof(argv[3]);
-                scene_preset = argv[4];
-                raysPerPixel = std::stoi(argv[5]);
-                mode = "render";
-            } catch (...) {
-                printUsage(argv[0]);
-                return 1;
-            }
-        }
-    } else if (argc == 7) {
-        // Format: raytracer <mode> <width> <height> <focal_length> <scene> <raysPerPixel>
-        mode = argv[1];
-        try {
-            width = std::stoi(argv[2]);
-            height = std::stoi(argv[3]);
-            focal_length = std::stof(argv[4]);
-            scene_preset = argv[5];
-            raysPerPixel = std::stoi(argv[6]);
-        } catch (...) {
-            printUsage(argv[0]);
-            return 1;
-        }
-    } else {
-        printUsage(argv[0]);
-        return 1;
-    }
-
     try {
+        // Define command-line options
+        po::options_description desc("Allowed options");
+        desc.add_options()
+            ("help", "Show this help message")
+            ("anti-aliasing,a", po::value<std::string>()->default_value("on"), 
+             "Toggle anti-aliasing (on/off)")
+            ("rays-per-pixel", po::value<int>()->default_value(8),
+             "Number of rays per pixel for anti-aliasing")
+            ("width,w", po::value<int>()->default_value(800),
+             "Image width in pixels")
+            ("height,h", po::value<int>()->default_value(800),
+             "Image height in pixels")
+            ("focal-length,l", po::value<float>()->default_value(1.0f),
+             "Focal length to image plane")
+            ("scene-preset,p", po::value<std::string>()->default_value("test"),
+             "Scene preset to use")
+            ("shader,s", po::value<std::string>()->default_value("render"),
+             "Shader mode to use");
+
+        po::variables_map vm;
+        po::store(po::parse_command_line(argc, argv, desc), vm);
+        po::notify(vm);
+
+        // Handle help option
+        if (vm.count("help")) {
+            printUsage(argv[0], desc);
+            return 0;
+        }
+
+        // Parse options
+        int width = vm["width"].as<int>();
+        int height = vm["height"].as<int>();
+        float focal_length = vm["focal-length"].as<float>();
+        std::string scene_preset = vm["scene-preset"].as<std::string>();
+        std::string shader_mode = vm["shader"].as<std::string>();
+        std::string aa_mode = vm["anti-aliasing"].as<std::string>();
+        int rays_per_pixel = vm["rays-per-pixel"].as<int>();
+
+        // Parse anti-aliasing mode
+        bool anti_aliasing_enabled = false;
+        if (aa_mode == "on" || aa_mode == "true" || aa_mode == "1") {
+            anti_aliasing_enabled = true;
+        } else if (aa_mode == "off" || aa_mode == "false" || aa_mode == "0") {
+            anti_aliasing_enabled = false;
+        } else {
+            std::cerr << "Error: --anti-aliasing must be 'on' or 'off'" << std::endl;
+            return 1;
+        }
+
+        // Validate parameters
         if (width <= 0 || height <= 0) {
             std::cerr << "Error: width and height must be positive integers" << std::endl;
             return 1;
         }
 
-        if (raysPerPixel <= 0) {
-            std::cerr << "Error: raysPerPixel must be a positive integer" << std::endl;
+        if (rays_per_pixel <= 0) {
+            std::cerr << "Error: rays-per-pixel must be a positive integer" << std::endl;
             return 1;
         }
 
-        FrameBuffer fb(width, height);
+        if (focal_length <= 0) {
+            std::cerr << "Error: focal-length must be positive" << std::endl;
+            return 1;
+        }
 
-        if (mode == "render") {
-            render(fb, width, height, focal_length, scene_preset, raysPerPixel);
-        } else if (mode == "normalshader") {
-            normalShader(fb, width, height, focal_length, scene_preset, raysPerPixel);
-        } else if (mode == "diffuse") {
-            diffuseShader(fb, width, height, focal_length, scene_preset, raysPerPixel);
+        // Set actual rays per pixel based on anti-aliasing setting
+        int actual_rays_per_pixel = anti_aliasing_enabled ? rays_per_pixel : 1;
+
+        // Load scene (for diffuse rendering, use lit version if available)
+        Scene scene;
+        if (shader_mode == "diffuse" && scene_preset == "test") {
+            scene = ScenePresets::createLitTestScene();
         } else {
-            std::cerr << "Unknown mode: " << mode << std::endl;
-            printUsage(argv[0]);
-            return 1;
+            scene = loadScene(scene_preset);
         }
+
+        // Update camera resolution to match requested dimensions and focal length
+        auto camera_ptr = std::make_shared<PerspectiveBasicCamera>(
+            vec3(0.0f, 0.0f, 3.0f), vec3(0.0f, 0.0f, -1.0f), focal_length,
+            static_cast<float>(width), static_cast<float>(height)
+        );
+        scene.setCamera(camera_ptr);
+
+        // Create appropriate shader
+        auto shader = createShader(shader_mode, scene);
+
+        // Create framebuffer and render
+        FrameBuffer fb(width, height);
+        shader->traceScene(fb, actual_rays_per_pixel);
 
         // Write to stdout
         char tmpfile[] = "/tmp/raytracer_XXXXXX";
@@ -341,6 +190,9 @@ int main(int argc, char* argv[]) {
         }
 
         return 0;
+    } catch (const po::error& e) {
+        std::cerr << "Error parsing command-line arguments: " << e.what() << std::endl;
+        return 1;
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
         return 1;
