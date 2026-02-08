@@ -7,6 +7,7 @@
 #include "Light.h"
 #include "vec.h"
 #include <memory>
+#include <random>
 
 // Utility class for creating pre-configured scenes
 class ScenePresets {
@@ -85,6 +86,86 @@ public:
         scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
             vec3(0.0f, 0.0f, 3.0f), vec3(0.0f, 0.0f, -1.0f), 0.25f, 800.0f, 600.0f
         ));
+
+        return scene;
+    }
+
+    // Create a scene with 50 spheres lined up on the z-axis with random colors
+    static Scene createAlignedSpheresScene() {
+        Scene scene;
+
+        // Random number generation for colors
+        std::mt19937 rng(42);  // Fixed seed for reproducibility
+        std::uniform_real_distribution<float> colorDist(0.2f, 1.0f);  // Avoid too dark colors
+
+        // Create 50 spheres of radius 1, kissing along the z-axis
+        const int numSpheres = 50;
+        const float radius = 1.0f;
+        const float spacing = 2.0f * radius;  // Spheres kiss when spacing equals 2*radius
+
+        for (int i = 0; i < numSpheres; ++i) {
+            // Position along z-axis, centered around z = -50
+            float z = -100.0f + i * spacing;
+
+            // Generate random color
+            float r = colorDist(rng);
+            float g = colorDist(rng);
+            float b = colorDist(rng);
+
+            scene.addSphere(Sphere(vec3(0.0f, 0.0f, z), radius, vec3(r, g, b)));
+        }
+
+        // Add default camera positioned to view the line of spheres
+        // Position camera further back to view all 50 spheres
+        scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
+            vec3(5.0f, 5.0f, 0.0f), vec3(0.0f, 0.0f, -1.0f), 1.0f, 400.0f, 400.0f
+        ));
+
+        scene.addLight(Light(vec3(5.0f, 5.0f, 5.0f), vec3(1.0f, 1.0f, 1.0f)));
+
+        return scene;
+    }
+
+    // Create a scene with 50 spheres spiraling around the z-axis with random colors
+    static Scene createSpiralSpheresScene() {
+        Scene scene;
+
+        // Random number generation for colors
+        std::mt19937 rng(42);  // Fixed seed for reproducibility
+        std::uniform_real_distribution<float> colorDist(0.2f, 1.0f);  // Avoid too dark colors
+
+        // Create 50 spheres of radius 1, spiraling around the z-axis
+        const int numSpheres = 500;
+        const float radius = 1.0f;
+        const float spacing = 2.0f * radius;  // Spheres kiss when spacing equals 2*radius
+        const float spiralRadius = 5.0f;  // Radius of the spiral
+        const float spiralTurns = 75.0f;  // Number of complete turns
+
+        for (int i = 0; i < numSpheres; ++i) {
+            // Position along z-axis
+            float z = -i * spacing;
+
+            // Calculate angle for spiral (increases with each sphere)
+            float angle = (i / static_cast<float>(numSpheres)) * 2.0f * 3.14159265359f * spiralTurns;
+
+            // Position on spiral
+            float x = spiralRadius * std::cos(angle);
+            float y = spiralRadius * std::sin(angle);
+
+            // Generate random color
+            float r = colorDist(rng);
+            float g = colorDist(rng);
+            float b = colorDist(rng);
+
+            scene.addSphere(Sphere(vec3(x, y, z), radius, vec3(r, g, b)));
+        }
+
+        // Add default camera positioned to view the spiral
+        scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
+            vec3(0.0f, 0.0f, -5.0f), vec3(0.0f, 0.0f, -1.0f), 5.0f, 400.0f, 400.0f
+        ));
+
+        scene.addLight(Light(vec3(10.0f, 10.0f, 10.0f), vec3(1.0f, 1.0f, 1.0f)));
 
         return scene;
     }

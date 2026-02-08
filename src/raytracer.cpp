@@ -26,6 +26,8 @@ void printUsage(const std::string& programName, const po::options_description& d
     std::cerr << "  lit_test             - Test scene with lighting for diffuse rendering" << std::endl;
     std::cerr << "  single_sphere        - Single purple sphere" << std::endl;
     std::cerr << "  grid                 - 3x3 grid of spheres" << std::endl;
+    std::cerr << "  aligned              - 50 spheres lined up on z-axis with random colors" << std::endl;
+    std::cerr << "  spiral               - 50 spheres spiraling around z-axis with random colors" << std::endl;
     std::cerr << std::endl;
     std::cerr << "Available Shaders:" << std::endl;
     std::cerr << "  render               - Renders scene with material colors (default)" << std::endl;
@@ -50,6 +52,10 @@ Scene loadScene(const std::string& preset_name) {
         return ScenePresets::createSingleSphereScene();
     } else if (preset_name == "grid") {
         return ScenePresets::createGridScene();
+    } else if (preset_name == "aligned") {
+        return ScenePresets::createAlignedSpheresScene();
+    } else if (preset_name == "spiral") {
+        return ScenePresets::createSpiralSpheresScene();
     } else {
         std::cerr << "Unknown scene preset: " << preset_name << std::endl;
         throw std::invalid_argument("Invalid scene preset");
@@ -148,11 +154,11 @@ int main(int argc, char* argv[]) {
         }
 
         // Update camera resolution to match requested dimensions and focal length
-        auto camera_ptr = std::make_shared<PerspectiveBasicCamera>(
-            vec3(0.0f, 0.0f, 3.0f), vec3(0.0f, 0.0f, -1.0f), focal_length,
-            static_cast<float>(width), static_cast<float>(height)
-        );
-        scene.setCamera(camera_ptr);
+        // auto camera_ptr = std::make_shared<PerspectiveBasicCamera>(
+        //     vec3(0.0f, 0.0f, 3.0f), vec3(0.0f, 0.0f, -1.0f), focal_length,
+        //     static_cast<float>(width), static_cast<float>(height)
+        // );
+        // scene.setCamera(camera_ptr);
 
         // Create appropriate shader
         auto shader = createShader(shader_mode, scene);
