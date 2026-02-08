@@ -22,7 +22,8 @@ set(UTESTS
   utest_vec
   utest_FrameBuffer
   utest_Ray
-  utest_Sphere)
+  utest_Sphere
+  utest_Triangle)
 
 # 
 # For each of the executables named in ${UTESTS}, compile them into a

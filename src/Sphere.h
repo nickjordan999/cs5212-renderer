@@ -3,15 +3,9 @@
 
 #include "vec.h"
 #include "Ray.h"
+#include "HitRecord.h"
 #include <optional>
 #include <cmath>
-
-struct HitRecord {
-    float t;           // Parameter along the ray where intersection occurs
-    vec3 point;        // World space intersection point
-    vec3 normal;       // Surface normal at intersection point
-    vec3 material;     // Material color
-};
 
 class Sphere {
 public:

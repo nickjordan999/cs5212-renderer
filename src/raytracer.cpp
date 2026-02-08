@@ -28,6 +28,7 @@ void printUsage(const std::string& programName, const po::options_description& d
     std::cerr << "  grid                 - 3x3 grid of spheres" << std::endl;
     std::cerr << "  aligned              - 50 spheres lined up on z-axis with random colors" << std::endl;
     std::cerr << "  spiral               - 50 spheres spiraling around z-axis with random colors" << std::endl;
+    std::cerr << "  pyramid              - Triangle pyramid with colored faces" << std::endl;
     std::cerr << std::endl;
     std::cerr << "Available Shaders:" << std::endl;
     std::cerr << "  render               - Renders scene with material colors (default)" << std::endl;
@@ -56,6 +57,8 @@ Scene loadScene(const std::string& preset_name) {
         return ScenePresets::createAlignedSpheresScene();
     } else if (preset_name == "spiral") {
         return ScenePresets::createSpiralSpheresScene();
+    } else if (preset_name == "pyramid") {
+        return ScenePresets::createTrianglePyramidScene();
     } else {
         std::cerr << "Unknown scene preset: " << preset_name << std::endl;
         throw std::invalid_argument("Invalid scene preset");

@@ -4,10 +4,12 @@
 #include "Scene.h"
 #include "Camera.h"
 #include "Sphere.h"
+#include "Triangle.h"
 #include "Light.h"
 #include "vec.h"
 #include <memory>
 #include <random>
+#include <cmath>
 
 // Utility class for creating pre-configured scenes
 class ScenePresets {
@@ -166,6 +168,56 @@ public:
         ));
 
         scene.addLight(Light(vec3(10.0f, 10.0f, 10.0f), vec3(1.0f, 1.0f, 1.0f)));
+
+        return scene;
+    }
+
+    // Create a scene with triangles - a simple pyramid
+    static Scene createTrianglePyramidScene() {
+        Scene scene;
+
+        // Create a pyramid with a square base and apex
+        // Base: z = -8, corners at (±2, ±2)
+        // Apex: (0, 3, -8)
+        
+        // Define vertices
+        vec3 apex(0.0f, 3.0f, -8.0f);
+        vec3 baseV0(-2.0f, 0.0f, -8.0f);   // Front-left
+        vec3 baseV1(2.0f, 0.0f, -8.0f);    // Front-right
+        vec3 baseV2(2.0f, 0.0f, -12.0f);   // Back-right
+        vec3 baseV3(-2.0f, 0.0f, -12.0f);  // Back-left
+
+        // Define colors for each face
+        vec3 colorRed(1.0f, 0.0f, 0.0f);
+        vec3 colorGreen(0.0f, 1.0f, 0.0f);
+        vec3 colorBlue(0.0f, 0.0f, 1.0f);
+        vec3 colorYellow(1.0f, 1.0f, 0.0f);
+        vec3 colorCyan(0.0f, 1.0f, 1.0f);
+
+        // Front face: triangle (apex, baseV0, baseV1)
+        scene.addTriangle(Triangle(apex, baseV0, baseV1, colorRed));
+
+        // Right face: triangle (apex, baseV1, baseV2)
+        scene.addTriangle(Triangle(apex, baseV1, baseV2, colorGreen));
+
+        // Back face: triangle (apex, baseV2, baseV3)
+        scene.addTriangle(Triangle(apex, baseV2, baseV3, colorBlue));
+
+        // Left face: triangle (apex, baseV3, baseV0)
+        scene.addTriangle(Triangle(apex, baseV3, baseV0, colorYellow));
+
+        // Bottom base: two triangles (baseV0, baseV1, baseV2) and (baseV0, baseV2, baseV3)
+        scene.addTriangle(Triangle(baseV0, baseV1, baseV2, colorCyan));
+        scene.addTriangle(Triangle(baseV0, baseV2, baseV3, colorCyan));
+
+        // Add default camera
+        scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
+            vec3(5.0f, 5.0f, 0.0f), vec3(0.0f, 0.0f, -1.0f), 1.0f, 800.0f, 600.0f
+        ));
+
+        // Add lights for better visualization
+        scene.addLight(Light(vec3(5.0f, 5.0f, 5.0f), vec3(1.0f, 1.0f, 1.0f)));
+        scene.addLight(Light(vec3(-5.0f, 3.0f, 4.0f), vec3(0.5f, 0.5f, 0.5f)));
 
         return scene;
     }
