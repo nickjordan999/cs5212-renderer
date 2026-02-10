@@ -21,7 +21,7 @@ TEST_CASE("Sphere basic operations", "[Sphere]") {
     }
 
     SECTION("Get material") {
-        vec3 result = sphere.getMaterial();
+        vec3 result = sphere.getMaterial().color;
         REQUIRE(result[0] == 1.0f);
         REQUIRE(result[1] == 0.0f);
         REQUIRE(result[2] == 0.0f);
@@ -225,7 +225,7 @@ TEST_CASE("Sphere hit record material", "[Sphere]") {
     REQUIRE(hit.has_value());
     
     // Material should be preserved in hit record
-    REQUIRE_THAT(hit.value().material[0], Catch::Matchers::WithinRel(0.2f, 0.01f));
-    REQUIRE_THAT(hit.value().material[1], Catch::Matchers::WithinRel(0.7f, 0.01f));
-    REQUIRE_THAT(hit.value().material[2], Catch::Matchers::WithinRel(0.3f, 0.01f));
+    REQUIRE_THAT(hit.value().material.color[0], Catch::Matchers::WithinRel(0.2f, 0.01f));
+    REQUIRE_THAT(hit.value().material.color[1], Catch::Matchers::WithinRel(0.7f, 0.01f));
+    REQUIRE_THAT(hit.value().material.color[2], Catch::Matchers::WithinRel(0.3f, 0.01f));
 }

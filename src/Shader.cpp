@@ -57,48 +57,51 @@ void NormalShader::traceScene(FrameBuffer& fb, int raysPerPixel) const {
     }
 }
 
+vec3 DiffuseShader::shadeRay(const Ray& ray, int depth) const {
+    if (depth <= 0) return background;
+
+    auto hit = scene.traceRayWithHitInfo(ray);
+    if (!hit.has_value()) return background;
+
+    if (hit->material.type == Material::METALLIC) {
+        // Compute reflected ray
+        vec3 reflected_dir = reflect(ray.getDirection().normalized(), hit->normal);
+        reflected_dir = (reflected_dir + random_in_unit_sphere() * hit->material.fuzziness).normalized();
+        Ray reflected_ray(hit->point, reflected_dir);
+        // Tint recursive result by metal color
+        return hit->material.color * shadeRay(reflected_ray, depth - 1);
+    }
+
+    // Diffuse shading: sum contributions from all lights
+    vec3 shaded_color(0.0f, 0.0f, 0.0f);
+
+    const auto& lights = scene.getLights();
+    for (const auto& light : lights) {
+        vec3 light_dir = (light.getPosition() - hit->point).normalized();
+        float diffuse_factor = std::max(0.0f, hit->normal.dot(light_dir));
+        shaded_color = shaded_color + (hit->material.color * light.getIntensity() * diffuse_factor);
+    }
+
+    // Add ambient light
+    vec3 ambient(0.1f, 0.1f, 0.1f);
+    shaded_color = shaded_color + (hit->material.color * ambient);
+
+    return shaded_color;
+}
+
 void DiffuseShader::traceScene(FrameBuffer& fb, int raysPerPixel) const {
     const Camera& camera = scene.getCamera();
     // Raytrace the scene with diffuse shading
     for (size_t y = 0; y < static_cast<size_t>(fb.getHeight()); ++y) {
         for (size_t x = 0; x < static_cast<size_t>(fb.getWidth()); ++x) {
             vec3 color(0.0f, 0.0f, 0.0f);
-            
+
             // Sample multiple rays per pixel for anti-aliasing
             for (int sample = 0; sample < raysPerPixel; ++sample) {
                 Ray ray = (raysPerPixel > 1) ? camera.generateRayAA(x, y) : camera.generateRay(x, y);
-                auto hit = scene.traceRayWithHitInfo(ray);
-
-                vec3 sample_color;
-                if (hit.has_value()) {
-                    // Diffuse shading: sum contributions from all lights
-                    vec3 shaded_color(0.0f, 0.0f, 0.0f);
-                    
-                    const auto& lights = scene.getLights();
-                    for (const auto& light : lights) {
-                        // Calculate light direction (normalized)
-                        vec3 light_dir = (light.getPosition() - hit->point).normalized();
-                        
-                        // Calculate diffuse factor using Lambert's cosine law
-                        // Only positive dot products contribute (front-facing surfaces)
-                        float diffuse_factor = std::max(0.0f, hit->normal.dot(light_dir));
-                        
-                        // Accumulate light contribution: material_color * light_intensity * diffuse_factor
-                        shaded_color = shaded_color + (hit->material * light.getIntensity() * diffuse_factor);
-                    }
-                    
-                    // Add ambient light
-                    vec3 ambient(0.1f, 0.1f, 0.1f);
-                    shaded_color = shaded_color + (hit->material * ambient);
-                    
-                    sample_color = shaded_color;
-                } else {
-                    sample_color = background;
-                }
-                
-                color = color + sample_color;
+                color = color + shadeRay(ray, 5);
             }
-            
+
             // Average the samples
             color = color * (1.0f / static_cast<float>(raysPerPixel));
             fb.setPixel(x, y, color);

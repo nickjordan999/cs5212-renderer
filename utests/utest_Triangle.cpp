@@ -25,7 +25,7 @@ TEST_CASE("Triangle basic operations", "[Triangle]") {
     }
 
     SECTION("Get material") {
-        vec3 result = tri.getMaterial();
+        vec3 result = tri.getMaterial().color;
         REQUIRE(result[0] == 1.0f);
         REQUIRE(result[1] == 0.0f);
         REQUIRE(result[2] == 0.0f);
@@ -66,7 +66,7 @@ TEST_CASE("Triangle ray intersection - front face", "[Triangle]") {
         REQUIRE_THAT(hit.value().point[2], Catch::Matchers::WithinAbs(0.0f, 0.01f));
         
         // Material should be returned
-        REQUIRE(hit.value().material[0] == 1.0f);
+        REQUIRE(hit.value().material.color[0] == 1.0f);
     }
 
     SECTION("Ray perpendicular to triangle - hits vertex v0") {
@@ -323,9 +323,9 @@ TEST_CASE("Triangle ray intersection - HitRecord content", "[Triangle]") {
     }
 
     SECTION("HitRecord has correct material") {
-        REQUIRE_THAT(hit.value().material[0], Catch::Matchers::WithinAbs(0.2f, 0.001f));
-        REQUIRE_THAT(hit.value().material[1], Catch::Matchers::WithinAbs(0.8f, 0.001f));
-        REQUIRE_THAT(hit.value().material[2], Catch::Matchers::WithinAbs(0.4f, 0.001f));
+        REQUIRE_THAT(hit.value().material.color[0], Catch::Matchers::WithinAbs(0.2f, 0.001f));
+        REQUIRE_THAT(hit.value().material.color[1], Catch::Matchers::WithinAbs(0.8f, 0.001f));
+        REQUIRE_THAT(hit.value().material.color[2], Catch::Matchers::WithinAbs(0.4f, 0.001f));
     }
 
     SECTION("HitRecord has normalized normal") {

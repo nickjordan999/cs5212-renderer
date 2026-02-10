@@ -4,6 +4,7 @@
 #include "Camera.h"
 #include "Scene.h"
 #include "FrameBuffer.h"
+#include "Material.h"
 #include "vec.h"
 
 // Abstract base class for shaders
@@ -48,6 +49,9 @@ public:
         : Shader(scene, vec3(0.2f, 0.2f, 0.2f)) {}  // dark gray background
 
     void traceScene(FrameBuffer& fb, int raysPerPixel) const override;
+
+private:
+    vec3 shadeRay(const Ray& ray, int depth) const;
 };
 
 #endif // SHADER_H

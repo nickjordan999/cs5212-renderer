@@ -10,7 +10,7 @@
 class Triangle {
 public:
     // Constructor with three vertices and material color
-    Triangle(const vec3& v0, const vec3& v1, const vec3& v2, const vec3& material_color)
+    Triangle(const vec3& v0, const vec3& v1, const vec3& v2, const Material& material_color)
         : v0(v0), v1(v1), v2(v2), material(material_color) {
         // Pre-compute edges for intersection calculations
         edge1 = v1 - v0;
@@ -75,12 +75,12 @@ public:
     vec3 getV0() const { return v0; }
     vec3 getV1() const { return v1; }
     vec3 getV2() const { return v2; }
-    vec3 getMaterial() const { return material; }
+    Material getMaterial() const { return material; }
     vec3 getNormal() const { return face_normal; }
 
 private:
     vec3 v0, v1, v2;        // Triangle vertices
-    vec3 material;          // Material color
+    Material material;      // Material properties
     vec3 edge1, edge2;      // Pre-computed edges (v1-v0, v2-v0)
     vec3 face_normal;       // Pre-computed face normal
 };

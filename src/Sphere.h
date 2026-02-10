@@ -13,7 +13,7 @@ public:
     // center: center of sphere in world space
     // radius: radius of sphere
     // material: material color of sphere
-    Sphere(const vec3& center, float radius, const vec3& material)
+    Sphere(const vec3& center, float radius, const Material& material)
         : center(center), radius(radius), material(material) {}
 
     // Get sphere center
@@ -22,8 +22,8 @@ public:
     // Get sphere radius
     float getRadius() const { return radius; }
 
-    // Get material color
-    const vec3& getMaterial() const { return material; }
+    // Get material
+    const Material& getMaterial() const { return material; }
 
     // Check if ray intersects sphere and return hit information
     // Returns optional HitRecord if intersection occurs, nullopt otherwise
@@ -84,7 +84,7 @@ public:
 private:
     vec3 center;
     float radius;
-    vec3 material;  // Material color
+    Material material;  // Material properties
 };
 
 #endif // SPHERE_H
