@@ -171,7 +171,7 @@ public:
 
     // Add default camera positioned to view the spiral
     scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
-      vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, -1.0f), 10.0f, 400.0f, 400.0f));
+      vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, -1.0f), 10.0f, 800.0f, 800.0f));
 
     scene.addLight(Light(vec3(0.0f, 0.0f, -15.0f), vec3(1.0f, 1.0f, 1.0f)));
 
