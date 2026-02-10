@@ -3,6 +3,7 @@
 
 #include "Sphere.h"
 #include "Triangle.h"
+#include "Plane.h"
 #include "Light.h"
 #include "Camera.h"
 #include <vector>
@@ -40,6 +41,11 @@ public:
         triangles.push_back(triangle);
     }
 
+    // Add a plane to the scene
+    void addPlane(const Plane& plane) {
+        planes.push_back(plane);
+    }
+
     // Add a light to the scene
     void addLight(const Light& light) {
         lights.push_back(light);
@@ -75,9 +81,18 @@ public:
             }
         }
 
+        // Check intersection with all planes
+        for (const auto& plane : planes) {
+            auto hit = plane.intersect(ray, 0.001f, closest_t);
+            if (hit.has_value()) {
+                closest_t = hit->t;
+                closest_hit = hit;
+            }
+        }
+
         // Return material color if we hit something, otherwise background
         if (closest_hit.has_value()) {
-            return closest_hit->material;
+            return closest_hit->material.color;
         } else {
             return background_color;
         }
@@ -107,17 +122,27 @@ public:
             }
         }
 
+        // Check intersection with all planes
+        for (const auto& plane : planes) {
+            auto hit = plane.intersect(ray, 0.001f, closest_t);
+            if (hit.has_value()) {
+                closest_t = hit->t;
+                closest_hit = hit;
+            }
+        }
+
         return closest_hit;
     }
 
     // Get number of objects in scene
     size_t getObjectCount() const {
-        return spheres.size() + triangles.size();
+        return spheres.size() + triangles.size() + planes.size();
     }
 
 private:
     std::vector<Sphere> spheres;
     std::vector<Triangle> triangles;
+    std::vector<Plane> planes;
     std::vector<Light> lights;
     std::shared_ptr<Camera> camera;
 };
