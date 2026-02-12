@@ -33,7 +33,7 @@ void FrameBuffer::writeToPng(const std::string &filename) const
 
   for (size_t y = 0; y < height; ++y) {
     for (size_t x = 0; x < width; ++x) {
-      const vec3 &color = (*this)(x, height - y);
+      const vec3 &color = (*this)(x, height - 1 - y);
 
       // Convert from float [0,1] to byte [0,255]
       png::byte r = static_cast<png::byte>(std::clamp(color[0] * 255.0f, 0.0f, 255.0f));
