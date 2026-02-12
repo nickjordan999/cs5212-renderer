@@ -14,6 +14,8 @@
 #include <unistd.h>
 #include <string>
 #include <memory>
+#include <vector>
+#include <unordered_map>
 #include <boost/program_options.hpp>
 
 namespace po = boost::program_options;
@@ -44,11 +46,12 @@ void printUsage(const std::string &programName, const po::options_description &d
   std::cerr << "Examples:" << std::endl;
   std::cerr << "  " << programName << " --width 1024 --height 768" << std::endl;
   std::cerr << "  " << programName << " -w 800 -h 600 -s diffuse -p grid --rays-per-pixel 16" << std::endl;
+  std::cerr << "  " << programName << " -p spiral --scene-param t=0.5" << std::endl;
   std::cerr << "  " << programName << " --anti-aliasing off" << std::endl;
 }
 
 // Load a scene by preset name
-Scene loadScene(const std::string &preset_name)
+Scene loadScene(const std::string &preset_name, const SceneParams &params)
 {
   if (preset_name == "test") {
     return ScenePresets::createTestScene();
@@ -61,7 +64,7 @@ Scene loadScene(const std::string &preset_name)
   } else if (preset_name == "aligned") {
     return ScenePresets::createAlignedSpheresScene();
   } else if (preset_name == "spiral") {
-    return ScenePresets::createSpiralSpheresScene();
+    return ScenePresets::createSpiralSpheresScene(params);
   } else if (preset_name == "pyramid") {
     return ScenePresets::createTrianglePyramidScene();
   } else if (preset_name == "octahedron") {
@@ -99,7 +102,7 @@ int main(int argc, char *argv[])
   try {
     // Define command-line options
     po::options_description desc("Allowed options");
-    desc.add_options()("help", "Show this help message")("anti-aliasing,a", po::value<std::string>()->default_value("on"), "Toggle anti-aliasing (on/off)")("rays-per-pixel", po::value<int>()->default_value(8), "Number of rays per pixel for anti-aliasing")("width,w", po::value<int>()->default_value(800), "Image width in pixels")("height,h", po::value<int>()->default_value(800), "Image height in pixels")("focal-length,l", po::value<float>()->default_value(1.0f), "Focal length to image plane")("scene-preset,p", po::value<std::string>()->default_value("test"), "Scene preset to use")("shader,s", po::value<std::string>()->default_value("render"), "Shader mode to use");
+    desc.add_options()("help", "Show this help message")("anti-aliasing,a", po::value<std::string>()->default_value("on"), "Toggle anti-aliasing (on/off)")("rays-per-pixel", po::value<int>()->default_value(8), "Number of rays per pixel for anti-aliasing")("width,w", po::value<int>()->default_value(800), "Image width in pixels")("height,h", po::value<int>()->default_value(800), "Image height in pixels")("focal-length,l", po::value<float>()->default_value(1.0f), "Focal length to image plane")("scene-preset,p", po::value<std::string>()->default_value("test"), "Scene preset to use")("shader,s", po::value<std::string>()->default_value("render"), "Shader mode to use")("scene-param", po::value<std::vector<std::string>>()->composing(), "Scene parameter as key=value (e.g. t=0.5)");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -147,12 +150,25 @@ int main(int argc, char *argv[])
       return 1;
     }
 
+    // Parse scene parameters (key=value pairs)
+    SceneParams scene_params;
+    if (vm.count("scene-param")) {
+      for (const auto &kv : vm["scene-param"].as<std::vector<std::string>>()) {
+        size_t eq = kv.find('=');
+        if (eq == std::string::npos) {
+          std::cerr << "Error: --scene-param must be key=value, got: " << kv << std::endl;
+          return 1;
+        }
+        scene_params[kv.substr(0, eq)] = std::stof(kv.substr(eq + 1));
+      }
+    }
+
     // Set actual rays per pixel based on anti-aliasing setting
     int actual_rays_per_pixel = anti_aliasing_enabled ? rays_per_pixel : 1;
 
     // Load scene (for diffuse rendering, use lit version if available)
     Scene scene;
-    scene = loadScene(scene_preset);
+    scene = loadScene(scene_preset, scene_params);
 
     // Update camera resolution to match requested dimensions and focal length
     // auto camera_ptr = std::make_shared<PerspectiveBasicCamera>(

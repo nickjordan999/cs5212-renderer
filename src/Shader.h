@@ -8,50 +8,54 @@
 #include "vec.h"
 
 // Abstract base class for shaders
-class Shader {
+class Shader
+{
 public:
-    virtual ~Shader() = default;
+  virtual ~Shader() = default;
 
-    // Main method to trace the scene and fill the framebuffer
-    // raysPerPixel: number of rays per pixel for anti-aliasing
-    virtual void traceScene(FrameBuffer& fb, int raysPerPixel) const = 0;
+  // Main method to trace the scene and fill the framebuffer
+  // raysPerPixel: number of rays per pixel for anti-aliasing
+  virtual void traceScene(FrameBuffer &fb, int raysPerPixel) const = 0;
 
 protected:
-    Shader(const Scene& scene, const vec3& background)
-        : scene(scene), background(background) {}
+  Shader(const Scene &scene, const vec3 &background)
+    : scene(scene), background(background) {}
 
-    const Scene& scene;
-    vec3 background;
+  const Scene &scene;
+  vec3 background;
 };
 
 // Standard render shader - renders with material colors
-class SimpleShader : public Shader {
+class SimpleShader : public Shader
+{
 public:
-    SimpleShader(const Scene& scene)
-        : Shader(scene, vec3(0.5f, 0.7f, 1.0f)) {}  // sky blue background
+  SimpleShader(const Scene &scene)
+    : Shader(scene, vec3(0.5f, 0.7f, 1.0f)) {}// sky blue background
 
-    void traceScene(FrameBuffer& fb, int raysPerPixel) const override;
+  void traceScene(FrameBuffer &fb, int raysPerPixel) const override;
 };
 
 // Normal shader - visualizes surface normals
-class NormalShader : public Shader {
+class NormalShader : public Shader
+{
 public:
-    NormalShader(const Scene& scene)
-        : Shader(scene, vec3(0.2f, 0.2f, 0.2f)) {}  // dark gray background
+  NormalShader(const Scene &scene)
+    : Shader(scene, vec3(0.2f, 0.2f, 0.2f)) {}// dark gray background
 
-    void traceScene(FrameBuffer& fb, int raysPerPixel) const override;
+  void traceScene(FrameBuffer &fb, int raysPerPixel) const override;
 };
 
 // Diffuse shader - renders with diffuse shading from lights
-class DiffuseShader : public Shader {
+class DiffuseShader : public Shader
+{
 public:
-    DiffuseShader(const Scene& scene)
-        : Shader(scene, vec3(0.2f, 0.2f, 0.2f)) {}  // dark gray background
+  DiffuseShader(const Scene &scene)
+    : Shader(scene, vec3(0.0f, 0.0f, 0.0f)) {}// dark gray background
 
-    void traceScene(FrameBuffer& fb, int raysPerPixel) const override;
+  void traceScene(FrameBuffer &fb, int raysPerPixel) const override;
 
 private:
-    vec3 shadeRay(const Ray& ray, int depth) const;
+  vec3 shadeRay(const Ray &ray, int depth) const;
 };
 
-#endif // SHADER_H
+#endif// SHADER_H

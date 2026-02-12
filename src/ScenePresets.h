@@ -12,6 +12,9 @@
 #include <memory>
 #include <random>
 #include <cmath>
+#include <unordered_map>
+
+using SceneParams = std::unordered_map<std::string, float>;
 
 // Utility class for creating pre-configured scenes
 class ScenePresets
@@ -35,7 +38,7 @@ public:
 
     // Add default camera
     scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
-      vec3(0.0f, 0.0f, 3.0f), vec3(0.0f, 0.0f, -1.0f), 0.25f, 800.0f, 600.0f));
+      vec3(0.0f, 0.0f, 3.0f), vec3(0.0f, 0.0f, -1.0f), 0.25f));
 
     return scene;
   }
@@ -60,7 +63,7 @@ public:
 
     // Add default camera
     scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
-      vec3(0.0f, 0.0f, 3.0f), vec3(0.0f, 0.0f, -1.0f), 0.25f, 800.0f, 600.0f));
+      vec3(0.0f, 0.0f, 3.0f), vec3(0.0f, 0.0f, -1.0f), 0.25f));
 
     return scene;
   }
@@ -91,7 +94,7 @@ public:
 
     // Add default camera
     scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
-      vec3(0.0f, 0.0f, 3.0f), vec3(0.0f, 0.0f, -1.0f), 0.25f, 800.0f, 600.0f));
+      vec3(0.0f, 0.0f, 3.0f), vec3(0.0f, 0.0f, -1.0f), 0.25f));
 
     return scene;
   }
@@ -125,15 +128,19 @@ public:
     // Add default camera positioned to view the line of spheres
     // Position camera further back to view all 50 spheres
     scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
-      vec3(5.0f, 5.0f, 0.0f), vec3(0.0f, 0.0f, -1.0f), 1.0f, 400.0f, 400.0f));
+      vec3(5.0f, 5.0f, 0.0f), vec3(0.0f, 0.0f, -1.0f), 1.0f));
 
     scene.addLight(Light(vec3(5.0f, 5.0f, 5.0f), vec3(1.0f, 1.0f, 1.0f)));
 
     return scene;
   }
 
-  // Create a scene with 50 spheres spiraling around the z-axis with random colors
-  static Scene createSpiralSpheresScene()
+  // Create a scene with spheres spiraling around the z-axis with random colors
+  // Params:
+  //   t            — fraction [0,1] positioning the camera along the spiral's z-extent
+  //   num_spheres  — number of spheres (default 500)
+  //   spiral_turns — number of complete turns (default 75)
+  static Scene createSpiralSpheresScene(const SceneParams &params = {})
   {
     Scene scene;
 
@@ -142,11 +149,11 @@ public:
     std::uniform_real_distribution<float> fuzzDist(0.0f, 0.5f);
 
     // Create spheres spiraling around the z-axis with HSL hue cycling
-    const int numSpheres = 500;
+    const int numSpheres = params.count("num_spheres") ? static_cast<int>(params.at("num_spheres")) : 500;
     const float radius = 1.0f;
     const float spacing = 2.0f * radius;// Spheres kiss when spacing equals 2*radius
     const float spiralRadius = 5.0f;// Radius of the spiral
-    const float spiralTurns = 75.0f;// Number of complete turns
+    const float spiralTurns = params.count("spiral_turns") ? params.at("spiral_turns") : 75.0f;// Number of complete turns
 
     for (int i = 0; i < numSpheres; ++i) {
       // Position along z-axis
@@ -159,8 +166,8 @@ public:
       float x = spiralRadius * std::cos(angle);
       float y = spiralRadius * std::sin(angle);
 
-      // Cycle hue across all spheres, max saturation and lightness
-      float hue = (i / static_cast<float>(numSpheres)) * 360.0f;
+      float hue_shift = params.count("hue_shift") ? params.at("hue_shift") : 0.0f;// Cycle hue across all spheres, max saturation and lightness
+      float hue = std::fmod((i / static_cast<float>(numSpheres)) * 360.0f + hue_shift, 360.f);
       vec3 color = HSLColor(hue, 1.0f, 0.5f).toRgb();
       float fuzz = fuzzDist(rng);
 
@@ -169,11 +176,13 @@ public:
 
     // scene.addSphere(Sphere(vec3(0.0f, 0.0f, -150.0f), 3.0f, Material::Mirror()));
 
-    // Add default camera positioned to view the spiral
+    // Position camera along the spiral's z-extent based on parameter t
+    float t = params.count("t") ? params.at("t") : -0.1f;
+    float totalZ = (numSpheres - 1) * spacing;
     scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
-      vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, -1.0f), 10.0f, 800.0f, 800.0f));
+      vec3(0.0f, 0.0f, -t * totalZ), vec3(0.0f, 0.0f, -1.0f), 5.0f));
 
-    scene.addLight(Light(vec3(0.0f, 0.0f, -15.0f), vec3(1.0f, 1.0f, 1.0f)));
+    scene.addLight(Light(vec3(0.0f, 0.0f, -totalZ / 4.0f), vec3(1.0f, 1.0f, 1.0f)));
 
     return scene;
   }
@@ -215,7 +224,7 @@ public:
 
     // Camera positioned to view the octahedron at an angle
     scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
-      vec3(4.0f, 3.0f, -2.0f), vec3(0.0f, 0.0f, -1.0f), 1.0f, 800.0f, 600.0f));
+      vec3(4.0f, 3.0f, -2.0f), vec3(0.0f, 0.0f, -1.0f), 1.0f));
 
     // Lights
     scene.addLight(Light(vec3(5.0f, 5.0f, 5.0f), vec3(1.0f, 1.0f, 1.0f)));
@@ -265,7 +274,7 @@ public:
 
     // Add default camera
     scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
-      vec3(5.0f, 5.0f, 0.0f), vec3(0.0f, 0.0f, -1.0f), 1.0f, 800.0f, 600.0f));
+      vec3(5.0f, 5.0f, 0.0f), vec3(0.0f, 0.0f, -1.0f), 1.0f));
 
     // Add lights for better visualization
     scene.addLight(Light(vec3(5.0f, 5.0f, 5.0f), vec3(1.0f, 1.0f, 1.0f)));
@@ -312,7 +321,7 @@ public:
     // scene.addTriangle(Triangle(bottom, front, left, Material::Mirror()));
     // Camera angled down to see the plane stretching out
     scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
-      vec3(0.0f, 4.0f, 2.0f), vec3(0.0f, -0.4f, -1.0f), 2.0f, 800.0f, 800.0f));
+      vec3(0.0f, 4.0f, 2.0f), vec3(0.0f, -0.4f, -1.0f), 2.0f));
 
     // Lights
     scene.addLight(Light(vec3(5.0f, 8.0f, 2.0f), vec3(1.0f, 1.0f, 1.0f)));
@@ -341,7 +350,7 @@ public:
 
     // Camera angled down to see the plane stretching out
     scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
-      vec3(0.0f, 4.0f, 2.0f), vec3(0.0f, -0.4f, -1.0f), 2.0f, 800.0f, 800.0f));
+      vec3(0.0f, 4.0f, 2.0f), vec3(0.0f, -0.4f, -1.0f), 2.0f));
 
     // Lights
     scene.addLight(Light(vec3(5.0f, 8.0f, 2.0f), vec3(1.0f, 1.0f, 1.0f)));
@@ -620,7 +629,7 @@ public:
 
     // Camera: pulled back and elevated to see all five solids
     scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
-      vec3(0.0f, 4.0f, 0.0f), vec3(0.0f, -0.35f, -1.0f), 1.0f, 1000.0f, 600.0f));
+      vec3(0.0f, 4.0f, 0.0f), vec3(0.0f, -0.35f, -1.0f), 1.0f));
 
     // Lights
     scene.addLight(Light(vec3(5.0f, 10.0f, 5.0f), vec3(1.0f, 1.0f, 1.0f)));
@@ -653,7 +662,7 @@ public:
       vec3(0.0f, 0.0f, 1.0f)));
 
     scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
-      vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, -1.0f), 4.0f, 200.0f, 200.0f));
+      vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, -1.0f), 4.0f));
 
     scene.addLight(Light(vec3(5.0f, 8.0f, 2.0f), vec3(1.0f, 1.0f, 1.0f)));
 
