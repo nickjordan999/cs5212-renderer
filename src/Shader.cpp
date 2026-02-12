@@ -3,14 +3,16 @@
 
 void SimpleShader::traceScene(FrameBuffer& fb, int raysPerPixel) const {
     const Camera& camera = scene.getCamera();
+    float w = fb.getWidth();
+    float h = fb.getHeight();
     // Raytrace the scene
     for (size_t y = 0; y < static_cast<size_t>(fb.getHeight()); ++y) {
         for (size_t x = 0; x < static_cast<size_t>(fb.getWidth()); ++x) {
             vec3 color(0.0f, 0.0f, 0.0f);
-            
+
             // Sample multiple rays per pixel for anti-aliasing
             for (int sample = 0; sample < raysPerPixel; ++sample) {
-                Ray ray = (raysPerPixel > 1) ? camera.generateRayAA(x, y) : camera.generateRay(x, y);
+                Ray ray = (raysPerPixel > 1) ? camera.generateRayAA(x, y, w, h) : camera.generateRay(x, y, w, h);
                 color = color + scene.traceRay(ray, background);
             }
             
@@ -23,14 +25,16 @@ void SimpleShader::traceScene(FrameBuffer& fb, int raysPerPixel) const {
 
 void NormalShader::traceScene(FrameBuffer& fb, int raysPerPixel) const {
     const Camera& camera = scene.getCamera();
+    float w = fb.getWidth();
+    float h = fb.getHeight();
     // Raytrace the scene with normal visualization
     for (size_t y = 0; y < static_cast<size_t>(fb.getHeight()); ++y) {
         for (size_t x = 0; x < static_cast<size_t>(fb.getWidth()); ++x) {
             vec3 color(0.0f, 0.0f, 0.0f);
-            
+
             // Sample multiple rays per pixel for anti-aliasing
             for (int sample = 0; sample < raysPerPixel; ++sample) {
-                Ray ray = (raysPerPixel > 1) ? camera.generateRayAA(x, y) : camera.generateRay(x, y);
+                Ray ray = (raysPerPixel > 1) ? camera.generateRayAA(x, y, w, h) : camera.generateRay(x, y, w, h);
                 auto hit = scene.traceRayWithHitInfo(ray);
 
                 vec3 sample_color;
@@ -91,6 +95,8 @@ vec3 DiffuseShader::shadeRay(const Ray& ray, int depth) const {
 
 void DiffuseShader::traceScene(FrameBuffer& fb, int raysPerPixel) const {
     const Camera& camera = scene.getCamera();
+    float w = fb.getWidth();
+    float h = fb.getHeight();
     // Raytrace the scene with diffuse shading
     for (size_t y = 0; y < static_cast<size_t>(fb.getHeight()); ++y) {
         for (size_t x = 0; x < static_cast<size_t>(fb.getWidth()); ++x) {
@@ -98,7 +104,7 @@ void DiffuseShader::traceScene(FrameBuffer& fb, int raysPerPixel) const {
 
             // Sample multiple rays per pixel for anti-aliasing
             for (int sample = 0; sample < raysPerPixel; ++sample) {
-                Ray ray = (raysPerPixel > 1) ? camera.generateRayAA(x, y) : camera.generateRay(x, y);
+                Ray ray = (raysPerPixel > 1) ? camera.generateRayAA(x, y, w, h) : camera.generateRay(x, y, w, h);
                 color = color + shadeRay(ray, 5);
             }
 

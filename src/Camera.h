@@ -15,16 +15,13 @@ public:
   // Generate a ray that passes through pixel (i, j)
   // i: horizontal pixel coordinate (0 to width)
   // j: vertical pixel coordinate (0 to height)
-  virtual Ray generateRay(float i, float j) const = 0;
+  virtual Ray generateRay(float i, float j, float width, float height) const = 0;
 
   // Generate a ray with anti-aliasing jitter for pixel (i, j)
   // i: horizontal pixel coordinate (0 to width)
   // j: vertical pixel coordinate (0 to height)
   // This generates a ray within a slightly offset region of the pixel for anti-aliasing
-  virtual Ray generateRayAA(float i, float j) const = 0;
-
-  virtual float getWidth() const = 0;
-  virtual float getHeight() const = 0;
+  virtual Ray generateRayAA(float i, float j, float width, float height) const = 0;
 
 protected:
   // Static random number generator for anti-aliasing
@@ -46,16 +43,13 @@ public:
   // position: camera position (eye point)
   // direction: viewing direction (normalized)
   // focal_length: focal length (distance to image plane)
-  // width: image width in pixels
-  // height: image height in pixels
-  PerspectiveBasicCamera(const vec3 &position, const vec3 &direction, float focal_length, float width, float height)
-    : position(position), direction(direction), focal_length(focal_length),
-      width(width), height(height)
+  PerspectiveBasicCamera(const vec3 &position, const vec3 &direction, float focal_length)
+    : position(position), direction(direction), focal_length(focal_length)
   {
     setupCamera();
   }
 
-  Ray generateRay(float i, float j) const override
+  Ray generateRay(float i, float j, float width, float height) const override
   {
 
     // Normalize pixel coordinates to [-1, 1] range (with aspect ratio)
@@ -69,7 +63,7 @@ public:
     return Ray(position, ray_direction);
   }
 
-  Ray generateRayAA(float i, float j) const override
+  Ray generateRayAA(float i, float j, float width, float height) const override
   {
     // Add random jitter within the pixel bounds [0, 1)
     float jitter_x = randomFloat();
@@ -86,9 +80,6 @@ public:
     return Ray(position, ray_direction);
   }
 
-  float getWidth() const override { return width; }
-  float getHeight() const override { return height; }
-
 private:
   void setupCamera()
   {
@@ -103,7 +94,5 @@ private:
   vec3 v;
 
   float focal_length;
-  float width;
-  float height;
 };
 #endif// CAMERA_H

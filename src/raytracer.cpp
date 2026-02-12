@@ -165,7 +165,7 @@ int main(int argc, char *argv[])
     auto shader = createShader(shader_mode, scene);
 
     // Create framebuffer and render
-    FrameBuffer fb(scene.getCamera().getWidth(), scene.getCamera().getHeight());
+    FrameBuffer fb(width, height);
     shader->traceScene(fb, actual_rays_per_pixel);
 
     // Write to stdout
