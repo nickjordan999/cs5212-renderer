@@ -40,6 +40,7 @@ void printUsage(const std::string &programName, const po::options_description &d
   std::cerr << "  render               - Renders scene with material colors (default)" << std::endl;
   std::cerr << "  normalshader         - Renders scene with normal visualization" << std::endl;
   std::cerr << "  diffuse              - Renders scene with diffuse shading" << std::endl;
+  std::cerr << "  blinnphong           - Renders scene with Blinn-Phong shading" << std::endl;
   std::cerr << std::endl;
   std::cerr << "Options:" << std::endl;
   std::cerr << desc << std::endl;
@@ -92,6 +93,8 @@ std::unique_ptr<Shader> createShader(const std::string &mode, const Scene &scene
     return std::make_unique<NormalShader>(scene);
   } else if (mode == "diffuse") {
     return std::make_unique<DiffuseShader>(scene);
+  } else if (mode == "blinnphong") {
+    return std::make_unique<BlinnPhongShader>(scene);
   } else {
     throw std::invalid_argument("Unknown shader mode: " + mode);
   }

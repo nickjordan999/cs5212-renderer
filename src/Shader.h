@@ -58,4 +58,17 @@ private:
   vec3 shadeRay(const Ray &ray, int depth) const;
 };
 
+// Blinn-Phong shader - ambient + diffuse + specular (halfway vector)
+class BlinnPhongShader : public Shader
+{
+public:
+  BlinnPhongShader(const Scene &scene)
+    : Shader(scene, vec3(0.0f, 0.0f, 0.0f)) {}
+
+  void traceScene(FrameBuffer &fb, int raysPerPixel) const override;
+
+private:
+  vec3 shadeRay(const Ray &ray, int depth) const;
+};
+
 #endif// SHADER_H
