@@ -144,16 +144,12 @@ public:
   {
     Scene scene;
 
-    // Random number generation for fuzz
-    std::mt19937 rng(42);// Fixed seed for reproducibility
-    std::uniform_real_distribution<float> fuzzDist(0.0f, 0.5f);
-
     // Create spheres spiraling around the z-axis with HSL hue cycling
     const int numSpheres = params.count("num_spheres") ? static_cast<int>(params.at("num_spheres")) : 500;
     const float radius = 1.0f;
-    const float spacing = 2.0f * radius;// Spheres kiss when spacing equals 2*radius
-    const float spiralRadius = 5.0f;// Radius of the spiral
-    const float spiralTurns = params.count("spiral_turns") ? params.at("spiral_turns") : 75.0f;// Number of complete turns
+    const float spacing = 2.0f * radius;
+    const float spiralRadius = 5.0f;
+    const float spiralTurns = params.count("spiral_turns") ? params.at("spiral_turns") : 75.0f;
 
     for (int i = 0; i < numSpheres; ++i) {
       // Position along z-axis
@@ -169,18 +165,15 @@ public:
       float hue_shift = params.count("hue_shift") ? params.at("hue_shift") : 0.0f;// Cycle hue across all spheres, max saturation and lightness
       float hue = std::fmod((i / static_cast<float>(numSpheres)) * 360.0f + hue_shift, 360.f);
       vec3 color = HSLColor(hue, 1.0f, 0.5f).toRgb();
-      float fuzz = fuzzDist(rng);
 
       scene.addSphere(Sphere(vec3(x, y, z), radius, Material(color)));
     }
-
-    // scene.addSphere(Sphere(vec3(0.0f, 0.0f, -150.0f), 3.0f, Material::Mirror()));
 
     // Position camera along the spiral's z-extent based on parameter t
     float t = params.count("t") ? params.at("t") : -0.1f;
     float totalZ = (numSpheres - 1) * spacing;
     scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
-      vec3(0.0f, 0.0f, -t * totalZ), vec3(0.0f, 0.0f, -1.0f), 5.0f));
+      vec3(0.0f, 0.0f, -t * totalZ), vec3(0.0f, 0.0f, -1.0f), 8.0f));
 
     scene.addLight(Light(vec3(0.0f, 0.0f, -totalZ / 4.0f), vec3(1.0f, 1.0f, 1.0f)));
 
@@ -359,83 +352,21 @@ public:
     return scene;
   }
 
-  // Create a scene displaying all five Platonic solids
-  static Scene createPlatonicSolidsScene()
+
+  static Scene createDodecahedronScene()
   {
     Scene scene;
 
+    float sqrt3 = std::sqrt(3.0f);
+    float sUniform = 1.5f / sqrt3;// for tet, cube, dodec (circumR = √3)
     const float phi = (1.0f + std::sqrt(5.0f)) / 2.0f;
     const float psi = phi - 1.0f;
 
-    // Checkerboard floor
-    Material floorBlack(vec3(0.1f, 0.1f, 0.1f));
     Material floorWhite(vec3(0.9f, 0.9f, 0.9f));
-    scene.addPlane(Plane(vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f), floorBlack, floorWhite, 2.0f));
+    Material floorBlack(vec3(0.1f, 0.1f, 0.1f));
 
-    // Shared scale: normalize each solid so circumradius ≈ 1.5
-    float sqrt3 = std::sqrt(3.0f);
-    float sUniform = 1.5f / sqrt3;// for tet, cube, dodec (circumR = √3)
-    float sOcta = 1.5f;// circumR = 1
-    float sIcosa = 1.5f / std::sqrt(2.0f + phi);// circumR = √(2+φ)
-
-    float y = 1.8f;// center height above floor
-
-    // === Tetrahedron (4 verts, 4 faces) ===
-    const vec3 tetV[] = {
-      vec3(1, 1, 1), vec3(1, -1, -1), vec3(-1, 1, -1), vec3(-1, -1, 1)
-    };
-    const int tetF[] = {
-      0, 1, 2, 0, 3, 1, 0, 2, 3, 1, 3, 2
-    };
-    addSolid(scene, tetV, tetF, 4, vec3(-7.0f, y, -8.0f), sUniform, Material(vec3(1.0f, 0.2f, 0.2f)));
-
-    // === Cube (8 verts, 12 faces) ===
-    const vec3 cubeV[] = {
-      vec3(1, 1, 1), vec3(1, 1, -1), vec3(1, -1, 1), vec3(1, -1, -1), vec3(-1, 1, 1), vec3(-1, 1, -1), vec3(-1, -1, 1), vec3(-1, -1, -1)
-    };
-    const int cubeF[] = {
-      0, 2, 3, 0, 3, 1,// +X
-      4,
-      5,
-      7,
-      4,
-      7,
-      6,// -X
-      0,
-      1,
-      5,
-      0,
-      5,
-      4,// +Y
-      2,
-      6,
-      7,
-      2,
-      7,
-      3,// -Y
-      0,
-      4,
-      6,
-      0,
-      6,
-      2,// +Z
-      1,
-      3,
-      7,
-      1,
-      7,
-      5// -Z
-    };
-    addSolid(scene, cubeV, cubeF, 12, vec3(-3.5f, y, -8.0f), sUniform, Material(vec3(0.2f, 0.4f, 1.0f)));
-
-    // === Octahedron (6 verts, 8 faces) ===
-    const vec3 octaV[] = {
-      vec3(1, 0, 0), vec3(-1, 0, 0), vec3(0, 1, 0), vec3(0, -1, 0), vec3(0, 0, 1), vec3(0, 0, -1)
-    };
-    const int octaF[] = {
-      0, 2, 4, 0, 4, 3, 0, 3, 5, 0, 5, 2, 1, 4, 2, 1, 3, 4, 1, 5, 3, 1, 2, 5
-    };
-    addSolid(scene, octaV, octaF, 8, vec3(0.0f, y, -8.0f), sOcta, Material(vec3(1.0f, 0.84f, 0.0f)));
+    // scene.addPlane(Plane(vec3(0.0f, -10.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f), floorWhite, floorBlack, 2.0f));
+    scene.addSphere(Sphere(vec3(4.0f, 0.0f, -8.0f), 1.0f, vec3(1.0f, 1.0f, 1.0f)));
 
     // === Dodecahedron (20 verts, 36 faces) ===
     const vec3 dodecV[] = {
@@ -560,7 +491,99 @@ public:
       7,
       19// face around 5-10-11-7-19
     };
-    addSolid(scene, dodecV, dodecF, 36, vec3(3.5f, y, -8.0f), sUniform, Material(vec3(0.8f, 0.8f, 0.8f)));
+
+    addSolid(scene, dodecV, dodecF, 36, vec3(0.0f, 0.0f, -8.0f), sUniform, Material(vec3(1.0f, 1.0f, 1.0f)));
+
+
+    // Camera: pulled back and elevated to see all five solids
+    scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
+      vec3(7.5f, 5.0f, 0.0f), vec3(-0.7f, -0.6f, -1.0f), 2.5f));
+
+    // Lights
+    scene.addLight(Light(vec3(10.0f, 0.0f, 0.0f), vec3(1.0f, 0.0f, 0.0f)));
+    scene.addLight(Light(vec3(0.0f, -10.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f)));
+    scene.addLight(Light(vec3(0.0, 0.0f, 0.0f), vec3(0.0, 0.0f, 1.0f)));
+
+    return scene;
+  }
+
+  // Create a scene displaying all five Platonic solids
+  static Scene createPlatonicSolidsScene()
+  {
+    Scene scene;
+
+    const float phi = (1.0f + std::sqrt(5.0f)) / 2.0f;
+    const float psi = phi - 1.0f;
+
+    // Checkerboard floor
+    Material floorBlack(vec3(0.1f, 0.1f, 0.1f));
+    Material floorWhite(vec3(0.9f, 0.9f, 0.9f));
+    scene.addPlane(Plane(vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f), floorBlack, floorWhite, 2.0f));
+
+    // Shared scale: normalize each solid so circumradius ≈ 1.5
+    float sqrt3 = std::sqrt(3.0f);
+    float sUniform = 1.5f / sqrt3;// for tet, cube, dodec (circumR = √3)
+    float sOcta = 1.5f;// circumR = 1
+    float sIcosa = 1.5f / std::sqrt(2.0f + phi);// circumR = √(2+φ)
+
+    float y = 1.8f;// center height above floor
+
+    // === Tetrahedron (4 verts, 4 faces) ===
+    const vec3 tetV[] = {
+      vec3(1, 1, 1), vec3(1, -1, -1), vec3(-1, 1, -1), vec3(-1, -1, 1)
+    };
+    const int tetF[] = {
+      0, 1, 2, 0, 3, 1, 0, 2, 3, 1, 3, 2
+    };
+    addSolid(scene, tetV, tetF, 4, vec3(-7.0f, y, -8.0f), sUniform, Material(vec3(1.0f, 0.2f, 0.2f)));
+
+    // === Cube (8 verts, 12 faces) ===
+    const vec3 cubeV[] = {
+      vec3(1, 1, 1), vec3(1, 1, -1), vec3(1, -1, 1), vec3(1, -1, -1), vec3(-1, 1, 1), vec3(-1, 1, -1), vec3(-1, -1, 1), vec3(-1, -1, -1)
+    };
+    const int cubeF[] = {
+      0, 2, 3, 0, 3, 1,// +X
+      4,
+      5,
+      7,
+      4,
+      7,
+      6,// -X
+      0,
+      1,
+      5,
+      0,
+      5,
+      4,// +Y
+      2,
+      6,
+      7,
+      2,
+      7,
+      3,// -Y
+      0,
+      4,
+      6,
+      0,
+      6,
+      2,// +Z
+      1,
+      3,
+      7,
+      1,
+      7,
+      5// -Z
+    };
+    addSolid(scene, cubeV, cubeF, 12, vec3(-3.5f, y, -8.0f), sUniform, Material(vec3(0.2f, 0.4f, 1.0f)));
+
+    // === Octahedron (6 verts, 8 faces) ===
+    const vec3 octaV[] = {
+      vec3(1, 0, 0), vec3(-1, 0, 0), vec3(0, 1, 0), vec3(0, -1, 0), vec3(0, 0, 1), vec3(0, 0, -1)
+    };
+    const int octaF[] = {
+      0, 2, 4, 0, 4, 3, 0, 3, 5, 0, 5, 2, 1, 4, 2, 1, 3, 4, 1, 5, 3, 1, 2, 5
+    };
+    addSolid(scene, octaV, octaF, 8, vec3(0.0f, y, -8.0f), sOcta, Material(vec3(1.0f, 0.84f, 0.0f)));
 
 
     // === Icosahedron (12 verts, 20 faces) ===

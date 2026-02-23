@@ -35,6 +35,7 @@ void printUsage(const std::string &programName, const po::options_description &d
   std::cerr << "  checkerboard         - Checkerboard plane with mirror sphere" << std::endl;
   std::cerr << "  hexboard             - Hexagonal-tiled plane with mirror sphere" << std::endl;
   std::cerr << "  platonic             - All five Platonic solids on a checkerboard" << std::endl;
+  std::cerr << "  dodecahedron         - Floating Dodecahedron" << std::endl;
   std::cerr << std::endl;
   std::cerr << "Available Shaders:" << std::endl;
   std::cerr << "  render               - Renders scene with material colors (default)" << std::endl;
@@ -70,6 +71,8 @@ Scene loadScene(const std::string &preset_name, const SceneParams &params)
     return ScenePresets::createTrianglePyramidScene();
   } else if (preset_name == "octahedron") {
     return ScenePresets::createOctahedronScene();
+  } else if (preset_name == "dodecahedron") {
+    return ScenePresets::createDodecahedronScene();
   } else if (preset_name == "checkerboard") {
     return ScenePresets::createCheckerboardScene();
   } else if (preset_name == "hexboard") {

@@ -63,7 +63,7 @@ class BlinnPhongShader : public Shader
 {
 public:
   BlinnPhongShader(const Scene &scene)
-    : Shader(scene, vec3(0.0f, 0.0f, 0.0f)) {}
+    : Shader(scene, vec3(0.3f, 0.3f, 0.3f)) {}
 
   void traceScene(FrameBuffer &fb, int raysPerPixel) const override;
 
