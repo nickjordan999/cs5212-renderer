@@ -36,6 +36,7 @@ void printUsage(const std::string &programName, const po::options_description &d
   std::cerr << "  hexboard             - Hexagonal-tiled plane with mirror sphere" << std::endl;
   std::cerr << "  platonic             - All five Platonic solids on a checkerboard" << std::endl;
   std::cerr << "  dodecahedron         - Floating Dodecahedron" << std::endl;
+  std::cerr << "  mixed_shader         - Three spheres each locked to a different shader (demo)" << std::endl;
   std::cerr << std::endl;
   std::cerr << "Available Shaders:" << std::endl;
   std::cerr << "  render               - Renders scene with material colors (default)" << std::endl;
@@ -81,6 +82,8 @@ Scene loadScene(const std::string &preset_name, const SceneParams &params)
     return ScenePresets::createPlatonicSolidsScene();
   } else if (preset_name == "triangle_test") {
     return ScenePresets::createTriangleTestScene();
+  } else if (preset_name == "mixed_shader") {
+    return ScenePresets::createMixedShaderScene();
   } else {
     std::cerr << "Unknown scene preset: " << preset_name << std::endl;
     throw std::invalid_argument("Invalid scene preset");

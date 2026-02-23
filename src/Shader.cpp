@@ -1,6 +1,39 @@
 #include "Shader.h"
 #include <cmath>
 
+// --- Free helper functions for per-object shader dispatch ---
+
+static vec3 computeDiffuse(const Scene& scene, const HitRecord& hit) {
+    vec3 shaded_color(0.0f, 0.0f, 0.0f);
+    const auto& lights = scene.getLights();
+    for (const auto& light : lights) {
+        vec3 light_dir = (light.getPosition() - hit.point).normalized();
+        float diffuse_factor = std::max(0.0f, hit.normal.dot(light_dir));
+        shaded_color = shaded_color + (hit.material.color * light.getIntensity() * diffuse_factor);
+    }
+    vec3 ambient(0.1f, 0.1f, 0.1f);
+    shaded_color = shaded_color + (hit.material.color * ambient);
+    return shaded_color;
+}
+
+static vec3 computeBlinnPhong(const Scene& scene, const Ray& ray, const HitRecord& hit) {
+    vec3 view_dir = (ray.getDirection() * -1.0f).normalized();
+    vec3 shaded_color(0.0f, 0.0f, 0.0f);
+    const auto& lights = scene.getLights();
+    for (const auto& light : lights) {
+        vec3 light_dir = (light.getPosition() - hit.point).normalized();
+        float diff = std::max(0.0f, hit.normal.dot(light_dir));
+        vec3 halfway = (light_dir + view_dir).normalized();
+        float spec = std::pow(std::max(0.0f, hit.normal.dot(halfway)), 32.0f);
+        shaded_color = shaded_color
+            + hit.material.color * light.getIntensity() * diff
+            + light.getIntensity() * spec * 0.5f;
+    }
+    vec3 ambient(0.1f, 0.1f, 0.1f);
+    shaded_color = shaded_color + (hit.material.color * ambient);
+    return shaded_color;
+}
+
 void SimpleShader::traceScene(FrameBuffer& fb, int raysPerPixel) const {
     const Camera& camera = scene.getCamera();
     float w = fb.getWidth();
@@ -76,21 +109,21 @@ vec3 DiffuseShader::shadeRay(const Ray& ray, int depth) const {
         return hit->material.color * shadeRay(reflected_ray, depth - 1);
     }
 
-    // Diffuse shading: sum contributions from all lights
-    vec3 shaded_color(0.0f, 0.0f, 0.0f);
-
-    const auto& lights = scene.getLights();
-    for (const auto& light : lights) {
-        vec3 light_dir = (light.getPosition() - hit->point).normalized();
-        float diffuse_factor = std::max(0.0f, hit->normal.dot(light_dir));
-        shaded_color = shaded_color + (hit->material.color * light.getIntensity() * diffuse_factor);
+    // Dispatch based on per-object shader override, defaulting to diffuse
+    switch (hit->material.shaderType.value_or(ShaderType::DIFFUSE)) {
+        case ShaderType::SIMPLE:
+            return hit->material.color;
+        case ShaderType::NORMAL:
+            return vec3(
+                (hit->normal[0] + 1.0f) * 0.5f,
+                (hit->normal[1] + 1.0f) * 0.5f,
+                (hit->normal[2] + 1.0f) * 0.5f
+            );
+        case ShaderType::BLINN_PHONG:
+            return computeBlinnPhong(scene, ray, *hit);
+        default:
+            return computeDiffuse(scene, *hit);
     }
-
-    // Add ambient light
-    vec3 ambient(0.1f, 0.1f, 0.1f);
-    shaded_color = shaded_color + (hit->material.color * ambient);
-
-    return shaded_color;
 }
 
 void DiffuseShader::traceScene(FrameBuffer& fb, int raysPerPixel) const {
@@ -128,31 +161,21 @@ vec3 BlinnPhongShader::shadeRay(const Ray& ray, int depth) const {
         return hit->material.color * shadeRay(reflected_ray, depth - 1);
     }
 
-    // Blinn-Phong shading
-    vec3 view_dir = (ray.getDirection() * -1.0f).normalized();
-    vec3 shaded_color(0.0f, 0.0f, 0.0f);
-
-    const auto& lights = scene.getLights();
-    for (const auto& light : lights) {
-        vec3 light_dir = (light.getPosition() - hit->point).normalized();
-
-        // Diffuse
-        float diff = std::max(0.0f, hit->normal.dot(light_dir));
-
-        // Specular (Blinn-Phong halfway vector)
-        vec3 halfway = (light_dir + view_dir).normalized();
-        float spec = std::pow(std::max(0.0f, hit->normal.dot(halfway)), 32.0f);
-
-        shaded_color = shaded_color
-            + hit->material.color * light.getIntensity() * diff
-            + light.getIntensity() * spec * 0.5f;
+    // Dispatch based on per-object shader override, defaulting to Blinn-Phong
+    switch (hit->material.shaderType.value_or(ShaderType::BLINN_PHONG)) {
+        case ShaderType::SIMPLE:
+            return hit->material.color;
+        case ShaderType::NORMAL:
+            return vec3(
+                (hit->normal[0] + 1.0f) * 0.5f,
+                (hit->normal[1] + 1.0f) * 0.5f,
+                (hit->normal[2] + 1.0f) * 0.5f
+            );
+        case ShaderType::DIFFUSE:
+            return computeDiffuse(scene, *hit);
+        default:
+            return computeBlinnPhong(scene, ray, *hit);
     }
-
-    // Ambient
-    vec3 ambient(0.1f, 0.1f, 0.1f);
-    shaded_color = shaded_color + (hit->material.color * ambient);
-
-    return shaded_color;
 }
 
 void BlinnPhongShader::traceScene(FrameBuffer& fb, int raysPerPixel) const {

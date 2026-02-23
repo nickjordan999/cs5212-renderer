@@ -4,7 +4,10 @@
 #include "vec.h"
 #include <algorithm>
 #include <cmath>
+#include <optional>
 #include <random>
+
+enum class ShaderType { SIMPLE, NORMAL, DIFFUSE, BLINN_PHONG };
 
 struct HSLColor {
     float h; // hue [0, 360)
@@ -36,6 +39,7 @@ struct Material {
     Type type;
     vec3 color;
     float fuzziness; // 0.0 = perfect mirror, 1.0 = very rough (only used for METALLIC)
+    std::optional<ShaderType> shaderType = std::nullopt;
 
     // Default: diffuse material from color (backwards compatible)
     Material(const vec3& c) : type(DIFFUSE), color(c), fuzziness(0.0f) {}
@@ -44,9 +48,24 @@ struct Material {
     Material(const vec3& c, float fuzz)
         : type(METALLIC), color(c), fuzziness(std::min(fuzz, 1.0f)) {}
 
+    // Diffuse material with explicit shader override
+    Material(const vec3& c, ShaderType shader)
+        : type(DIFFUSE), color(c), fuzziness(0.0f), shaderType(shader) {}
+
+    // Metallic material with explicit shader override
+    Material(const vec3& c, float fuzz, ShaderType shader)
+        : type(METALLIC), color(c), fuzziness(std::min(fuzz, 1.0f)), shaderType(shader) {}
+
     // Perfect mirror — reflects all light with no tint or fuzziness
     static Material Mirror() {
         return Material(vec3(1.0f, 1.0f, 1.0f), 0.0f);
+    }
+
+    // Perfect mirror with explicit shader override
+    static Material Mirror(ShaderType shader) {
+        Material m(vec3(1.0f, 1.0f, 1.0f), 0.0f);
+        m.shaderType = shader;
+        return m;
     }
 };
 

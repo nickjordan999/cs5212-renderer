@@ -661,6 +661,32 @@ public:
     return scene;
   }
 
+  // Create a scene demonstrating per-object shader assignment:
+  // Three spheres side by side, each forced to a different shading algorithm,
+  // regardless of the global --shader flag.
+  static Scene createMixedShaderScene()
+  {
+    Scene scene;
+
+    // Left sphere: always renders as simple (flat material color)
+    scene.addSphere(Sphere(vec3(-3.0f, 0.0f, -6.0f), 1.0f, Material(vec3(1.0f, 0.3f, 0.3f), ShaderType::SIMPLE)));
+
+    // Center sphere: always uses diffuse shading
+    scene.addSphere(Sphere(vec3(0.0f, 0.0f, -6.0f), 1.0f, Material(vec3(0.3f, 1.0f, 0.3f), ShaderType::DIFFUSE)));
+
+    // Right sphere: always uses Blinn-Phong shading (has visible specular highlight)
+    scene.addSphere(Sphere(vec3(3.0f, 0.0f, -6.0f), 1.0f, Material(vec3(0.3f, 0.5f, 1.0f), ShaderType::BLINN_PHONG)));
+
+    scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
+      vec3(0.0f, 0.0f, 2.0f), vec3(0.0f, 0.0f, -1.0f), 1.5f));
+
+    // Two lights to make shading differences visible
+    scene.addLight(Light(vec3(5.0f, 5.0f, 0.0f), vec3(1.0f, 1.0f, 1.0f)));
+    scene.addLight(Light(vec3(-3.0f, 2.0f, 2.0f), vec3(0.4f, 0.4f, 0.4f)));
+
+    return scene;
+  }
+
   // Test Triangle image
   static Scene createTriangleTestScene()
   {
