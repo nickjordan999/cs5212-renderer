@@ -3,6 +3,9 @@
 [Bb]uild*/
 cmake-build-debug/
 
+# Generated image folder
+img/
+
 .idea/
 
 # backup files
@@ -40,5 +43,6 @@ cmake-build-debug/
 *.exe
 *.out
 *.app
+
 
 .DS_Store
