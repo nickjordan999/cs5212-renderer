@@ -7,7 +7,7 @@
 #include <optional>
 #include <random>
 
-enum class ShaderType { SIMPLE, NORMAL, DIFFUSE, BLINN_PHONG };
+enum class ShaderType { SIMPLE, NORMAL, DIFFUSE, BLINN_PHONG, MIRROR };
 
 struct HSLColor {
     float h; // hue [0, 360)

@@ -121,6 +121,11 @@ vec3 DiffuseShader::shadeRay(const Ray& ray, int depth) const {
             );
         case ShaderType::BLINN_PHONG:
             return computeBlinnPhong(scene, ray, *hit);
+        case ShaderType::MIRROR: {
+            vec3 reflected_dir = reflect(ray.getDirection().normalized(), hit->normal);
+            Ray reflected_ray(hit->point, reflected_dir);
+            return hit->material.color * shadeRay(reflected_ray, depth - 1);
+        }
         default:
             return computeDiffuse(scene, *hit);
     }
@@ -173,6 +178,11 @@ vec3 BlinnPhongShader::shadeRay(const Ray& ray, int depth) const {
             );
         case ShaderType::DIFFUSE:
             return computeDiffuse(scene, *hit);
+        case ShaderType::MIRROR: {
+            vec3 reflected_dir = reflect(ray.getDirection().normalized(), hit->normal);
+            Ray reflected_ray(hit->point, reflected_dir);
+            return hit->material.color * shadeRay(reflected_ray, depth - 1);
+        }
         default:
             return computeBlinnPhong(scene, ray, *hit);
     }
@@ -189,6 +199,41 @@ void BlinnPhongShader::traceScene(FrameBuffer& fb, int raysPerPixel) const {
             for (int sample = 0; sample < raysPerPixel; ++sample) {
                 Ray ray = (raysPerPixel > 1) ? camera.generateRayAA(x, y, w, h) : camera.generateRay(x, y, w, h);
                 color = color + shadeRay(ray, 5);
+            }
+
+            color = color * (1.0f / static_cast<float>(raysPerPixel));
+            fb.setPixel(x, y, color);
+        }
+    }
+}
+
+vec3 MirrorShader::shadeRay(const Ray& ray, int depth) const {
+    if (depth <= 0) return background;
+
+    auto hit = scene.traceRayWithHitInfo(ray);
+    if (!hit.has_value()) return background;
+
+    // All surfaces reflect; tint by material color
+    vec3 reflected_dir = reflect(ray.getDirection().normalized(), hit->normal);
+    // Respect fuzziness for metallic materials
+    if (hit->material.type == Material::METALLIC && hit->material.fuzziness > 0.0f) {
+        reflected_dir = (reflected_dir + random_in_unit_sphere() * hit->material.fuzziness).normalized();
+    }
+    Ray reflected_ray(hit->point, reflected_dir);
+    return hit->material.color * shadeRay(reflected_ray, depth - 1);
+}
+
+void MirrorShader::traceScene(FrameBuffer& fb, int raysPerPixel) const {
+    const Camera& camera = scene.getCamera();
+    float w = fb.getWidth();
+    float h = fb.getHeight();
+    for (size_t y = 0; y < static_cast<size_t>(fb.getHeight()); ++y) {
+        for (size_t x = 0; x < static_cast<size_t>(fb.getWidth()); ++x) {
+            vec3 color(0.0f, 0.0f, 0.0f);
+
+            for (int sample = 0; sample < raysPerPixel; ++sample) {
+                Ray ray = (raysPerPixel > 1) ? camera.generateRayAA(x, y, w, h) : camera.generateRay(x, y, w, h);
+                color = color + shadeRay(ray, maxDepth);
             }
 
             color = color * (1.0f / static_cast<float>(raysPerPixel));

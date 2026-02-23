@@ -71,4 +71,20 @@ private:
   vec3 shadeRay(const Ray &ray, int depth) const;
 };
 
+// Mirror shader — every surface acts as a reflective mirror.
+// Material color tints the reflection; fuzziness is respected for METALLIC materials.
+// maxDepth controls the maximum number of ray bounces.
+class MirrorShader : public Shader
+{
+public:
+  MirrorShader(const Scene &scene, int maxDepth = 5)
+    : Shader(scene, vec3(0.5f, 0.7f, 1.0f)), maxDepth(maxDepth) {}// sky blue background
+
+  void traceScene(FrameBuffer &fb, int raysPerPixel) const override;
+
+private:
+  int maxDepth;
+  vec3 shadeRay(const Ray &ray, int depth) const;
+};
+
 #endif// SHADER_H
