@@ -13,16 +13,20 @@ class Shader
 public:
   virtual ~Shader() = default;
 
-  // Main method to trace the scene and fill the framebuffer
+  // Trace the scene and fill the framebuffer.
   // raysPerPixel: number of rays per pixel for anti-aliasing
-  virtual void traceScene(FrameBuffer &fb, int raysPerPixel) const = 0;
+  void traceScene(FrameBuffer &fb, int raysPerPixel) const;
 
 protected:
-  Shader(const Scene &scene, const vec3 &background)
-    : scene(scene), background(background) {}
+  Shader(const Scene &scene, const vec3 &defaultBackground, bool shadows = true)
+    : scene(scene), background(scene.getBackgroundColor().value_or(defaultBackground)), shadows(shadows) {}
+
+  // Shade a single ray — each subclass implements its shading algorithm
+  virtual vec3 shadeRay(const Ray &ray) const = 0;
 
   const Scene &scene;
   vec3 background;
+  bool shadows;
 };
 
 // Standard render shader - renders with material colors
@@ -32,7 +36,8 @@ public:
   SimpleShader(const Scene &scene)
     : Shader(scene, vec3(0.5f, 0.7f, 1.0f)) {}// sky blue background
 
-  void traceScene(FrameBuffer &fb, int raysPerPixel) const override;
+protected:
+  vec3 shadeRay(const Ray &ray) const override;
 };
 
 // Normal shader - visualizes surface normals
@@ -42,17 +47,19 @@ public:
   NormalShader(const Scene &scene)
     : Shader(scene, vec3(0.2f, 0.2f, 0.2f)) {}// dark gray background
 
-  void traceScene(FrameBuffer &fb, int raysPerPixel) const override;
+protected:
+  vec3 shadeRay(const Ray &ray) const override;
 };
 
 // Diffuse shader - renders with diffuse shading from lights
 class DiffuseShader : public Shader
 {
 public:
-  DiffuseShader(const Scene &scene)
-    : Shader(scene, vec3(0.0f, 0.0f, 0.0f)) {}// dark gray background
+  DiffuseShader(const Scene &scene, bool shadows = true)
+    : Shader(scene, vec3(0.0f, 0.0f, 0.0f), shadows) {}// black background
 
-  void traceScene(FrameBuffer &fb, int raysPerPixel) const override;
+protected:
+  vec3 shadeRay(const Ray &ray) const override;
 
 private:
   vec3 shadeRay(const Ray &ray, int depth) const;
@@ -62,10 +69,11 @@ private:
 class BlinnPhongShader : public Shader
 {
 public:
-  BlinnPhongShader(const Scene &scene)
-    : Shader(scene, vec3(0.3f, 0.3f, 0.3f)) {}
+  BlinnPhongShader(const Scene &scene, bool shadows = true)
+    : Shader(scene, vec3(0.3f, 0.3f, 0.3f), shadows) {}
 
-  void traceScene(FrameBuffer &fb, int raysPerPixel) const override;
+protected:
+  vec3 shadeRay(const Ray &ray) const override;
 
 private:
   vec3 shadeRay(const Ray &ray, int depth) const;
@@ -80,7 +88,8 @@ public:
   MirrorShader(const Scene &scene, int maxDepth = 5)
     : Shader(scene, vec3(0.5f, 0.7f, 1.0f)), maxDepth(maxDepth) {}// sky blue background
 
-  void traceScene(FrameBuffer &fb, int raysPerPixel) const override;
+protected:
+  vec3 shadeRay(const Ray &ray) const override;
 
 private:
   int maxDepth;

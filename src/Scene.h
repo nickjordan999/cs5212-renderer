@@ -6,13 +6,26 @@
 #include "Plane.h"
 #include "Light.h"
 #include "Camera.h"
+#include "Solid.h"
 #include <vector>
 #include <optional>
 #include <memory>
 
 class Scene {
 public:
-    Scene() : camera(nullptr) {}
+    Scene() : camera(nullptr), backgroundColor(0.0f, 0.0f, 0.0f), hasCustomBackground(false) {}
+
+    // Set the background color for this scene
+    void setBackgroundColor(const vec3& color) {
+        backgroundColor = color;
+        hasCustomBackground = true;
+    }
+
+    // Get the background color (returns nullopt if not explicitly set)
+    std::optional<vec3> getBackgroundColor() const {
+        if (hasCustomBackground) return backgroundColor;
+        return std::nullopt;
+    }
 
     // Set the camera for this scene
     void setCamera(std::shared_ptr<Camera> cam) {
@@ -46,6 +59,24 @@ public:
         planes.push_back(plane);
     }
 
+    // Add a solid (platonic solid) to the scene as triangles
+    void addSolid(const Solid& solid, const vec3& center, float scale, const Material& mat) {
+        const auto& verts = solid.getVertices();
+        const auto& faces = solid.getFaces();
+        for (int i = 0; i < solid.faceCount(); ++i) {
+            vec3 v0 = verts[faces[i*3+0]] * scale + center;
+            vec3 v1 = verts[faces[i*3+1]] * scale + center;
+            vec3 v2 = verts[faces[i*3+2]] * scale + center;
+            // Ensure normal points outward (away from solid center)
+            vec3 fc = (v0 + v1 + v2) / 3.0f;
+            vec3 n = (v1 - v0).cross(v2 - v0);
+            if (n.dot(fc - center) < 0)
+                addTriangle(Triangle(v0, v2, v1, mat));
+            else
+                addTriangle(Triangle(v0, v1, v2, mat));
+        }
+    }
+
     // Add a light to the scene
     void addLight(const Light& light) {
         lights.push_back(light);
@@ -54,6 +85,23 @@ public:
     // Get lights in the scene
     const std::vector<Light>& getLights() const {
         return lights;
+    }
+
+    // Test whether any object occludes the ray within [0.001, maxDist).
+    // Used for shadow rays: origin is a surface point, direction points at a light,
+    // and maxDist is the distance to that light.
+    bool isOccluded(const Ray& ray, float maxDist) const {
+        constexpr float t_min = 0.001f;
+        for (const auto& sphere : spheres) {
+            if (sphere.intersect(ray, t_min, maxDist).has_value()) return true;
+        }
+        for (const auto& triangle : triangles) {
+            if (triangle.intersect(ray, t_min, maxDist).has_value()) return true;
+        }
+        for (const auto& plane : planes) {
+            if (plane.intersect(ray, t_min, maxDist).has_value()) return true;
+        }
+        return false;
     }
 
     // Trace a ray through the scene and return the color
@@ -145,6 +193,8 @@ private:
     std::vector<Plane> planes;
     std::vector<Light> lights;
     std::shared_ptr<Camera> camera;
+    vec3 backgroundColor;
+    bool hasCustomBackground;
 };
 
 #endif // SCENE_H

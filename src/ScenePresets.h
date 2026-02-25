@@ -2,6 +2,7 @@
 #define SCENEPRESETS_H
 
 #include "Scene.h"
+#include "Solid.h"
 #include "Camera.h"
 #include "Sphere.h"
 #include "Triangle.h"
@@ -173,7 +174,7 @@ public:
     float t = params.count("t") ? params.at("t") : -0.1f;
     float totalZ = (numSpheres - 1) * spacing;
     scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
-      vec3(0.0f, 0.0f, -t * totalZ), vec3(0.0f, 0.0f, -1.0f), 8.0f));
+      vec3(0.0f, 0.0f, -t * totalZ), vec3(0.0f, 0.0f, -1.0f), 2.0f));
 
     scene.addLight(Light(vec3(0.0f, 0.0f, -totalZ / 4.0f), vec3(1.0f, 1.0f, 1.0f)));
 
@@ -357,143 +358,11 @@ public:
   {
     Scene scene;
 
-    float sqrt3 = std::sqrt(3.0f);
-    float sUniform = 1.5f / sqrt3;// for tet, cube, dodec (circumR = √3)
-    const float phi = (1.0f + std::sqrt(5.0f)) / 2.0f;
-    const float psi = phi - 1.0f;
+    float sUniform = 1.5f / std::sqrt(3.0f);
 
-    Material floorWhite(vec3(0.9f, 0.9f, 0.9f));
-    Material floorBlack(vec3(0.1f, 0.1f, 0.1f));
-
-    // scene.addPlane(Plane(vec3(0.0f, -10.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f), floorWhite, floorBlack, 2.0f));
     scene.addSphere(Sphere(vec3(4.0f, 0.0f, -8.0f), 1.0f, vec3(1.0f, 1.0f, 1.0f)));
 
-    // === Dodecahedron (20 verts, 36 faces) ===
-    const vec3 dodecV[] = {
-      vec3(1, 1, 1), vec3(1, 1, -1), vec3(1, -1, 1), vec3(1, -1, -1),// 0-3
-      vec3(-1, 1, 1),
-      vec3(-1, 1, -1),
-      vec3(-1, -1, 1),
-      vec3(-1, -1, -1),// 4-7
-      vec3(0, psi, phi),
-      vec3(0, -psi, phi),// 8-9
-      vec3(0, psi, -phi),
-      vec3(0, -psi, -phi),// 10-11
-      vec3(psi, phi, 0),
-      vec3(-psi, phi, 0),// 12-13
-      vec3(psi, -phi, 0),
-      vec3(-psi, -phi, 0),// 14-15
-      vec3(phi, 0, psi),
-      vec3(-phi, 0, psi),// 16-17
-      vec3(phi, 0, -psi),
-      vec3(-phi, 0, -psi)// 18-19
-    };
-    // 12 pentagonal faces, each fan-triangulated into 3 triangles = 36 total
-    const int dodecF[] = {
-      0, 8, 9, 0, 9, 2, 0, 2, 16,// face around 0-8-9-2-16
-      0,
-      12,
-      13,
-      0,
-      13,
-      4,
-      0,
-      4,
-      8,// face around 0-12-13-4-8
-      0,
-      16,
-      18,
-      0,
-      18,
-      1,
-      0,
-      1,
-      12,// face around 0-16-18-1-12
-      9,
-      6,
-      17,
-      9,
-      17,
-      4,
-      9,
-      4,
-      8,// face around 9-6-17-4-8
-      2,
-      14,
-      15,
-      2,
-      15,
-      6,
-      2,
-      6,
-      9,// face around 2-14-15-6-9
-      18,
-      3,
-      14,
-      18,
-      14,
-      2,
-      18,
-      2,
-      16,// face around 18-3-14-2-16
-      13,
-      5,
-      10,
-      13,
-      10,
-      1,
-      13,
-      1,
-      12,// face around 13-5-10-1-12
-      4,
-      13,
-      5,
-      4,
-      5,
-      19,
-      4,
-      19,
-      17,// face around 4-13-5-19-17
-      6,
-      15,
-      7,
-      6,
-      7,
-      19,
-      6,
-      19,
-      17,// face around 6-15-7-19-17
-      14,
-      3,
-      11,
-      14,
-      11,
-      7,
-      14,
-      7,
-      15,// face around 14-3-11-7-15
-      18,
-      1,
-      10,
-      18,
-      10,
-      11,
-      18,
-      11,
-      3,// face around 18-1-10-11-3
-      5,
-      10,
-      11,
-      5,
-      11,
-      7,
-      5,
-      7,
-      19// face around 5-10-11-7-19
-    };
-
-    addSolid(scene, dodecV, dodecF, 36, vec3(0.0f, 0.0f, -8.0f), sUniform, Material(vec3(1.0f, 1.0f, 1.0f)));
-
+    scene.addSolid(Solid::Dodecahedron(), vec3(0.0f, 0.0f, -8.0f), sUniform, Material(vec3(1.0f, 1.0f, 1.0f)));
 
     // Camera: pulled back and elevated to see all five solids
     scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
@@ -513,7 +382,6 @@ public:
     Scene scene;
 
     const float phi = (1.0f + std::sqrt(5.0f)) / 2.0f;
-    const float psi = phi - 1.0f;
 
     // Checkerboard floor
     Material floorBlack(vec3(0.1f, 0.1f, 0.1f));
@@ -521,134 +389,16 @@ public:
     scene.addPlane(Plane(vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f), floorBlack, floorWhite, 2.0f));
 
     // Shared scale: normalize each solid so circumradius ≈ 1.5
-    float sqrt3 = std::sqrt(3.0f);
-    float sUniform = 1.5f / sqrt3;// for tet, cube, dodec (circumR = √3)
+    float sUniform = 1.5f / std::sqrt(3.0f);// for tet, cube, dodec (circumR = √3)
     float sOcta = 1.5f;// circumR = 1
     float sIcosa = 1.5f / std::sqrt(2.0f + phi);// circumR = √(2+φ)
 
     float y = 1.8f;// center height above floor
 
-    // === Tetrahedron (4 verts, 4 faces) ===
-    const vec3 tetV[] = {
-      vec3(1, 1, 1), vec3(1, -1, -1), vec3(-1, 1, -1), vec3(-1, -1, 1)
-    };
-    const int tetF[] = {
-      0, 1, 2, 0, 3, 1, 0, 2, 3, 1, 3, 2
-    };
-    addSolid(scene, tetV, tetF, 4, vec3(-7.0f, y, -8.0f), sUniform, Material(vec3(1.0f, 0.2f, 0.2f)));
-
-    // === Cube (8 verts, 12 faces) ===
-    const vec3 cubeV[] = {
-      vec3(1, 1, 1), vec3(1, 1, -1), vec3(1, -1, 1), vec3(1, -1, -1), vec3(-1, 1, 1), vec3(-1, 1, -1), vec3(-1, -1, 1), vec3(-1, -1, -1)
-    };
-    const int cubeF[] = {
-      0, 2, 3, 0, 3, 1,// +X
-      4,
-      5,
-      7,
-      4,
-      7,
-      6,// -X
-      0,
-      1,
-      5,
-      0,
-      5,
-      4,// +Y
-      2,
-      6,
-      7,
-      2,
-      7,
-      3,// -Y
-      0,
-      4,
-      6,
-      0,
-      6,
-      2,// +Z
-      1,
-      3,
-      7,
-      1,
-      7,
-      5// -Z
-    };
-    addSolid(scene, cubeV, cubeF, 12, vec3(-3.5f, y, -8.0f), sUniform, Material(vec3(0.2f, 0.4f, 1.0f)));
-
-    // === Octahedron (6 verts, 8 faces) ===
-    const vec3 octaV[] = {
-      vec3(1, 0, 0), vec3(-1, 0, 0), vec3(0, 1, 0), vec3(0, -1, 0), vec3(0, 0, 1), vec3(0, 0, -1)
-    };
-    const int octaF[] = {
-      0, 2, 4, 0, 4, 3, 0, 3, 5, 0, 5, 2, 1, 4, 2, 1, 3, 4, 1, 5, 3, 1, 2, 5
-    };
-    addSolid(scene, octaV, octaF, 8, vec3(0.0f, y, -8.0f), sOcta, Material(vec3(1.0f, 0.84f, 0.0f)));
-
-
-    // === Icosahedron (12 verts, 20 faces) ===
-    const vec3 icosaV[] = {
-      vec3(0, 1, phi), vec3(0, 1, -phi),// 0-1
-      vec3(0, -1, phi),
-      vec3(0, -1, -phi),// 2-3
-      vec3(1, phi, 0),
-      vec3(1, -phi, 0),// 4-5
-      vec3(-1, phi, 0),
-      vec3(-1, -phi, 0),// 6-7
-      vec3(phi, 0, 1),
-      vec3(phi, 0, -1),// 8-9
-      vec3(-phi, 0, 1),
-      vec3(-phi, 0, -1)// 10-11
-    };
-    const int icosaF[] = {
-      0, 2, 8, 0, 8, 4, 0, 4, 6, 0, 6, 10, 0, 10, 2,// top cap
-      1,
-      3,
-      9,
-      1,
-      9,
-      4,
-      1,
-      4,
-      6,
-      1,
-      6,
-      11,
-      1,
-      11,
-      3,// bottom cap
-      2,
-      8,
-      5,
-      2,
-      5,
-      7,
-      2,
-      7,
-      10,// mid from v2
-      3,
-      9,
-      5,
-      3,
-      5,
-      7,
-      3,
-      7,
-      11,// mid from v3
-      8,
-      5,
-      9,
-      8,
-      9,
-      4,// mid from v8
-      10,
-      7,
-      11,
-      10,
-      11,
-      6// mid from v10
-    };
-    addSolid(scene, icosaV, icosaF, 20, vec3(7.0f, y, -8.0f), sIcosa, Material(vec3(0.2f, 1.0f, 0.3f)));
+    scene.addSolid(Solid::Tetrahedron(), vec3(-7.0f, y, -8.0f), sUniform, Material(vec3(1.0f, 0.2f, 0.2f)));
+    scene.addSolid(Solid::Cube(), vec3(-3.5f, y, -8.0f), sUniform, Material(vec3(0.2f, 0.4f, 1.0f)));
+    scene.addSolid(Solid::Octahedron(), vec3(0.0f, y, -8.0f), sOcta, Material(vec3(1.0f, 0.84f, 0.0f)));
+    scene.addSolid(Solid::Icosahedron(), vec3(7.0f, y, -8.0f), sIcosa, Material(vec3(0.2f, 1.0f, 0.3f)));
 
     // Camera: pulled back and elevated to see all five solids
     scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
@@ -662,31 +412,62 @@ public:
   }
 
   // Create a scene demonstrating per-object shader assignment:
-  // Four spheres side by side, each forced to a different shading algorithm,
+  // Three spheres and a dodecahedron, each forced to a different shading algorithm,
   // regardless of the global --shader flag.
   static Scene createMixedShaderScene()
   {
     Scene scene;
 
-    // Far-left sphere: always renders as simple (flat material color)
-    scene.addSphere(Sphere(vec3(-4.5f, 0.0f, -6.0f), 1.0f, Material(vec3(1.0f, 0.3f, 0.3f), ShaderType::SIMPLE)));
+    scene.setBackgroundColor(vec3(0.5f, 0.7f, 1.0f));
 
-    // Center-left sphere: always uses diffuse shading
-    scene.addSphere(Sphere(vec3(0.0f, 0.0f, -6.0f), 1.0f, Material(vec3(0.3f, 1.0f, 0.3f), ShaderType::DIFFUSE)));
+    // Left sphere
+    scene.addSphere(Sphere(vec3(-4.5f, 0.0f, -4.0f), 1.0f, Material(vec3(0.9f, 0.9f, 0.9f), ShaderType::MIRROR)));
 
-    // Center-right sphere: always uses Blinn-Phong shading (has visible specular highlight)
-    scene.addSphere(Sphere(vec3(4.5f, 0.0f, -6.0f), 1.0f, Material(vec3(0.3f, 0.5f, 1.0f), ShaderType::BLINN_PHONG)));
+    // Center dodecahedron — diffuse shading
+    scene.addSolid(Solid::Dodecahedron(), vec3(0.0f, 0.0f, -2.0f), 1.0f / std::sqrt(3.0f), Material(vec3(0.9f, 0.3f, 0.0f), ShaderType::DIFFUSE));
 
-    // Far-right sphere: mirror — reflects the other spheres
-    scene.addSphere(Sphere(vec3(0.0f, 4.0f, -6.0f), 2.5f, Material(vec3(0.9f, 0.9f, 0.9f), ShaderType::MIRROR)));
+    // Right sphere
+    scene.addSphere(Sphere(vec3(4.5f, 0.0f, -4.0f), 1.0f, Material(vec3(0.3f, 0.5f, 1.0f), ShaderType::BLINN_PHONG)));
+
+    // Above sphere
+    scene.addSphere(Sphere(vec3(0.0f, 5.0f, -6.0f), 3.0f, Material(vec3(0.9f, 0.9f, 0.9f), ShaderType::MIRROR)));
+
+    Material floorLight(vec3(0.1f, 0.4f, 0.1f));
+    scene.addPlane(Plane(vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f), floorLight));
 
     // Pull camera back to keep all four spheres in frame
     scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
-      vec3(0.0f, 0.0f, 3.0f), vec3(0.0f, 0.0f, -1.0f), 1.5f));
+      vec3(0.0f, 2.2f, 2.5f), vec3(0.0f, 0.0f, -1.0f), 1.0f));
 
     // Two lights to make shading differences visible
     scene.addLight(Light(vec3(5.0f, 5.0f, 0.0f), vec3(1.0f, 1.0f, 1.0f)));
     scene.addLight(Light(vec3(-3.0f, 2.0f, 2.0f), vec3(0.4f, 0.4f, 0.4f)));
+
+    return scene;
+  }
+
+  // A single sphere sitting on a checkerboard plane, lit by three light sources
+  // from different positions so each casts a distinct shadow onto the plane.
+  static Scene createShadowDemoScene()
+  {
+    Scene scene;
+
+    // Checkerboard floor — high contrast so shadows are clearly visible
+    Material floorLight(vec3(0.85f, 0.85f, 0.85f));
+    Material floorDark(vec3(0.2f, 0.2f, 0.2f));
+    scene.addPlane(Plane(vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f), floorLight, floorDark, 2.0f));
+
+    // Orange sphere sitting on the plane (center at y = radius = 1)
+    scene.addSphere(Sphere(vec3(0.0f, 1.0f, -5.0f), 1.0f, Material(vec3(0.9f, 0.5f, 0.1f))));
+
+    // Camera angled down to see both the sphere and the shadows spreading on the floor
+    scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
+      vec3(0.0f, 5.0f, 2.0f), vec3(0.0f, -0.5f, -1.0f), 2.0f));
+
+    // Three lights at different azimuths — each casts a shadow in a different direction
+    scene.addLight(Light(vec3(-5.0f, 6.0f, -2.0f), vec3(1.0f, 0.85f, 0.7f)));// left-front, warm
+    scene.addLight(Light(vec3(5.0f, 6.0f, -2.0f), vec3(0.7f, 0.85f, 1.0f)));// right-front, cool
+    scene.addLight(Light(vec3(0.0f, 7.0f, -10.0f), vec3(0.8f, 1.0f, 0.8f)));// rear, neutral green-white
 
     return scene;
   }
@@ -722,23 +503,70 @@ public:
     return scene;
   }
 
-private:
-  // Helper: add a triangulated solid with auto-corrected outward normals.
-  // `faces` is a flat array of vertex indices (every 3 = one triangle).
-  static void addSolid(Scene &scene, const vec3 *verts, const int *faces, int nFaces, const vec3 &center, float scale, const Material &mat)
+  static Scene createHallOfMirrorsScene()
   {
-    for (int i = 0; i < nFaces; ++i) {
-      vec3 v0 = verts[faces[i * 3 + 0]] * scale + center;
-      vec3 v1 = verts[faces[i * 3 + 1]] * scale + center;
-      vec3 v2 = verts[faces[i * 3 + 2]] * scale + center;
-      // Ensure normal points outward (away from solid center)
-      vec3 fc = (v0 + v1 + v2) / 3.0f;
-      vec3 n = (v1 - v0).cross(v2 - v0);
-      if (n.dot(fc - center) < 0)
-        scene.addTriangle(Triangle(v0, v2, v1, mat));
-      else
-        scene.addTriangle(Triangle(v0, v1, v2, mat));
-    }
+    Scene scene;
+
+    // Central spheres
+    // scene.addSphere(Sphere(vec3(0.0f, 0.0f, -10.0f), 1.0f, Material(vec3(0.9f, 0.9f, 0.9f), ShaderType::BLINN_PHONG)));
+
+    vec3 color1 = HSLColor(180.0f, 1.0f, 0.5f).toRgb();
+
+    // scene.addSphere(Sphere(vec3(0.0f, 0.0f, 0.0f), 0.5f, Material(color1, ShaderType::BLINN_PHONG)));
+
+    vec3 color2 = HSLColor(270.0f, 1.0f, 0.5f).toRgb();
+
+    scene.addSphere(Sphere(vec3(0.0f, 1.0f, 0.0f), 0.25f, Material(color2, ShaderType::BLINN_PHONG)));
+
+    vec3 color3 = HSLColor(90.0f, 1.0f, 0.5f).toRgb();
+
+    scene.addSphere(Sphere(vec3(0.0f, -1.0f, 0.0), 0.25f, Material(color3, ShaderType::BLINN_PHONG)));
+
+    vec3 color4 = HSLColor(360.0f, 1.0f, 0.5f).toRgb();
+
+    scene.addSphere(Sphere(vec3(1.0f, 0.0f, 0.0), 0.25f, Material(color4, ShaderType::BLINN_PHONG)));
+
+    vec3 color5 = HSLColor(45.0f, 1.0f, 0.5f).toRgb();
+
+    scene.addSphere(Sphere(vec3(-1.0f, 0.0f, 0.0), 0.25f, Material(color5, ShaderType::BLINN_PHONG)));
+
+    vec3 color6 = HSLColor(135.0f, 1.0f, 0.5f).toRgb();
+
+    scene.addSphere(Sphere(vec3(0.0f, 0.0f, 0.5f), 0.25f, Material(color6, ShaderType::BLINN_PHONG)));
+
+    vec3 color7 = HSLColor(225.0f, 1.0f, 0.5f).toRgb();
+
+    scene.addSphere(Sphere(vec3(0.0f, 0.0f, -0.5f), 0.25f, Material(color7, ShaderType::BLINN_PHONG)));
+
+
+    Material mirrorMaterial(vec3(0.9f, 0.9f, 0.9f), ShaderType::MIRROR);
+
+    scene.addSphere(Sphere(vec3(-10.0f, 0.0f, 0.0f), 5.0f, mirrorMaterial));
+
+    scene.addSphere(Sphere(vec3(10.0f, 0.0f, 0.0f), 5.0f, mirrorMaterial));
+
+    scene.addSphere(Sphere(vec3(0.0f, -10.0f, 0.0f), 5.0f, mirrorMaterial));
+
+    scene.addSphere(Sphere(vec3(0.0f, 10.0f, 0.0f), 5.0f, mirrorMaterial));
+
+    scene.addSphere(Sphere(vec3(0.0f, 0.0f, -10.0f), 5.0f, mirrorMaterial));
+
+    scene.addSphere(Sphere(vec3(0.0f, 0.0f, 10.0f), 5.0f, mirrorMaterial));
+    // Mirror planes
+    // scene.addPlane(Plane(vec3(-2.0f, 0.0f, 0.0f), vec3(1.0f, 0.0f, 0.0f), mirrorMaterial));
+    //
+    // scene.addPlane(Plane(vec3(2.0f, 0.0f, 0.0f), vec3(-1.0f, 0.0f, 0.0f), mirrorMaterial));
+
+    // Pull camera back to keep all four spheres in frame
+    scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
+      vec3(0.0f, 0.0f, 1.0f), vec3(0.0f, 0.0f, -1.0f), 0.25f));
+
+    // front light
+    scene.addLight(Light(vec3(0.0f, 0.0f, 1.0f), vec3(1.0f, 1.0f, 1.0f)));
+    // back light
+    scene.addLight(Light(vec3(0.0f, 0.0f, -1.0f), vec3(1.0f, 1.0f, 1.0f)));
+
+    return scene;
   }
 };
 

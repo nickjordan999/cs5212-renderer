@@ -37,6 +37,7 @@ void printUsage(const std::string &programName, const po::options_description &d
   std::cerr << "  platonic             - All five Platonic solids on a checkerboard" << std::endl;
   std::cerr << "  dodecahedron         - Floating Dodecahedron" << std::endl;
   std::cerr << "  mixed_shader         - Three spheres each locked to a different shader (demo)" << std::endl;
+  std::cerr << "  shadow_demo          - Single sphere on a checkerboard plane with three lights casting shadows" << std::endl;
   std::cerr << std::endl;
   std::cerr << "Available Shaders:" << std::endl;
   std::cerr << "  render               - Renders scene with material colors (default)" << std::endl;
@@ -44,6 +45,9 @@ void printUsage(const std::string &programName, const po::options_description &d
   std::cerr << "  diffuse              - Renders scene with diffuse shading" << std::endl;
   std::cerr << "  blinnphong           - Renders scene with Blinn-Phong shading" << std::endl;
   std::cerr << "  mirror               - Renders every surface as a reflective mirror (use --reflect-depth to control bounces)" << std::endl;
+  std::cerr << std::endl;
+  std::cerr << "Rendering Options:" << std::endl;
+  std::cerr << "  --shadows on/off     - Enable or disable shadow casting (default: on)" << std::endl;
   std::cerr << std::endl;
   std::cerr << "Options:" << std::endl;
   std::cerr << desc << std::endl;
@@ -85,6 +89,10 @@ Scene loadScene(const std::string &preset_name, const SceneParams &params)
     return ScenePresets::createTriangleTestScene();
   } else if (preset_name == "mixed_shader") {
     return ScenePresets::createMixedShaderScene();
+  } else if (preset_name == "shadow_demo") {
+    return ScenePresets::createShadowDemoScene();
+  } else if (preset_name == "hall_of_mirrors") {
+    return ScenePresets::createHallOfMirrorsScene();
   } else {
     std::cerr << "Unknown scene preset: " << preset_name << std::endl;
     throw std::invalid_argument("Invalid scene preset");
@@ -92,16 +100,16 @@ Scene loadScene(const std::string &preset_name, const SceneParams &params)
 }
 
 // Create a shader based on the rendering mode
-std::unique_ptr<Shader> createShader(const std::string &mode, const Scene &scene, int reflectDepth)
+std::unique_ptr<Shader> createShader(const std::string &mode, const Scene &scene, int reflectDepth, bool shadows)
 {
   if (mode == "render") {
     return std::make_unique<SimpleShader>(scene);
   } else if (mode == "normalshader") {
     return std::make_unique<NormalShader>(scene);
   } else if (mode == "diffuse") {
-    return std::make_unique<DiffuseShader>(scene);
+    return std::make_unique<DiffuseShader>(scene, shadows);
   } else if (mode == "blinnphong") {
-    return std::make_unique<BlinnPhongShader>(scene);
+    return std::make_unique<BlinnPhongShader>(scene, shadows);
   } else if (mode == "mirror") {
     return std::make_unique<MirrorShader>(scene, reflectDepth);
   } else {
@@ -114,7 +122,7 @@ int main(int argc, char *argv[])
   try {
     // Define command-line options
     po::options_description desc("Allowed options");
-    desc.add_options()("help", "Show this help message")("anti-aliasing,a", po::value<std::string>()->default_value("on"), "Toggle anti-aliasing (on/off)")("rays-per-pixel", po::value<int>()->default_value(8), "Number of rays per pixel for anti-aliasing")("width,w", po::value<int>()->default_value(800), "Image width in pixels")("height,h", po::value<int>()->default_value(800), "Image height in pixels")("focal-length,l", po::value<float>()->default_value(1.0f), "Focal length to image plane")("scene-preset,p", po::value<std::string>()->default_value("test"), "Scene preset to use")("shader,s", po::value<std::string>()->default_value("render"), "Shader mode to use")("reflect-depth", po::value<int>()->default_value(5), "Maximum mirror reflection bounces (used by --shader mirror)")("scene-param", po::value<std::vector<std::string>>()->composing(), "Scene parameter as key=value (e.g. t=0.5)");
+    desc.add_options()("help", "Show this help message")("anti-aliasing,a", po::value<std::string>()->default_value("on"), "Toggle anti-aliasing (on/off)")("rays-per-pixel", po::value<int>()->default_value(8), "Number of rays per pixel for anti-aliasing")("width,w", po::value<int>()->default_value(800), "Image width in pixels")("height,h", po::value<int>()->default_value(800), "Image height in pixels")("focal-length,l", po::value<float>()->default_value(1.0f), "Focal length to image plane")("scene-preset,p", po::value<std::string>()->default_value("test"), "Scene preset to use")("shader,s", po::value<std::string>()->default_value("render"), "Shader mode to use")("reflect-depth", po::value<int>()->default_value(5), "Maximum mirror reflection bounces (used by --shader mirror)")("shadows", po::value<std::string>()->default_value("on"), "Enable shadow casting (on/off)")("scene-param", po::value<std::vector<std::string>>()->composing(), "Scene parameter as key=value (e.g. t=0.5)");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -135,6 +143,8 @@ int main(int argc, char *argv[])
     std::string aa_mode = vm["anti-aliasing"].as<std::string>();
     int rays_per_pixel = vm["rays-per-pixel"].as<int>();
     int reflect_depth = vm["reflect-depth"].as<int>();
+    std::string shadows_mode = vm["shadows"].as<std::string>();
+    bool shadows_enabled = (shadows_mode == "on" || shadows_mode == "true" || shadows_mode == "1");
 
     // Parse anti-aliasing mode
     bool anti_aliasing_enabled = false;
@@ -191,7 +201,7 @@ int main(int argc, char *argv[])
     // scene.setCamera(camera_ptr);
 
     // Create appropriate shader
-    auto shader = createShader(shader_mode, scene, reflect_depth);
+    auto shader = createShader(shader_mode, scene, reflect_depth, shadows_enabled);
 
     // Create framebuffer and render
     FrameBuffer fb(width, height);
