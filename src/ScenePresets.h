@@ -194,15 +194,15 @@ public:
     vec3 right(1.5f, 0.0f, -8.0f);// +X
     vec3 left(-1.5f, 0.0f, -8.0f);// -X
 
-    // Materials for each face — mix of diffuse and metallic
+    // Materials for each face — mix of diffuse and mirror
     Material red(vec3(1.0f, 0.2f, 0.2f));
     Material green(vec3(0.2f, 1.0f, 0.2f));
-    Material metalSilver(vec3(0.8f, 0.8f, 0.8f), 0.0f);// perfect mirror
-    Material metalGold(vec3(1.0f, 0.84f, 0.0f), 0.3f);// fuzzy gold
+    Material metalSilver(vec3(0.8f, 0.8f, 0.8f), ShaderType::MIRROR);
+    Material metalGold(vec3(1.0f, 0.84f, 0.0f), ShaderType::MIRROR);
     Material cyan(vec3(0.2f, 1.0f, 1.0f));
-    Material metalCopper(vec3(0.72f, 0.45f, 0.2f), 0.1f);// slightly fuzzy copper
+    Material metalCopper(vec3(0.72f, 0.45f, 0.2f), ShaderType::MIRROR);
     Material orange(vec3(1.0f, 0.6f, 0.2f));
-    Material metalBlue(vec3(0.4f, 0.4f, 0.9f), 0.5f);// rough blue metal
+    Material metalBlue(vec3(0.4f, 0.4f, 0.9f), ShaderType::MIRROR);
 
     // Upper 4 faces (connecting top vertex to equatorial edges)
     scene.addTriangle(Triangle(top, front, right, red));

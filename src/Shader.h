@@ -7,7 +7,8 @@
 #include "Material.h"
 #include "vec.h"
 
-// Abstract base class for shaders
+// Base shader class.  The shading algorithm is determined by defaultShaderType;
+// per-object overrides (material.shaderType) are always respected.
 class Shader
 {
 public:
@@ -18,15 +19,24 @@ public:
   void traceScene(FrameBuffer &fb, int raysPerPixel) const;
 
 protected:
-  Shader(const Scene &scene, const vec3 &defaultBackground, bool shadows = true)
-    : scene(scene), background(scene.getBackgroundColor().value_or(defaultBackground)), shadows(shadows) {}
-
-  // Shade a single ray — each subclass implements its shading algorithm
-  virtual vec3 shadeRay(const Ray &ray) const = 0;
+  Shader(const Scene &scene, ShaderType defaultShaderType,
+         const vec3 &defaultBackground, bool shadows = true, int maxDepth = 5)
+    : scene(scene),
+      background(scene.getBackgroundColor().value_or(defaultBackground)),
+      shadows(shadows),
+      defaultShaderType(defaultShaderType),
+      maxDepth(maxDepth) {}
 
   const Scene &scene;
   vec3 background;
   bool shadows;
+
+private:
+  ShaderType defaultShaderType;
+  int maxDepth;
+
+  vec3 shadeRay(const Ray &ray) const;
+  vec3 shadeRay(const Ray &ray, int depth) const;
 };
 
 // Standard render shader - renders with material colors
@@ -34,10 +44,7 @@ class SimpleShader : public Shader
 {
 public:
   SimpleShader(const Scene &scene)
-    : Shader(scene, vec3(0.5f, 0.7f, 1.0f)) {}// sky blue background
-
-protected:
-  vec3 shadeRay(const Ray &ray) const override;
+    : Shader(scene, ShaderType::SIMPLE, vec3(0.5f, 0.7f, 1.0f)) {}// sky blue background
 };
 
 // Normal shader - visualizes surface normals
@@ -45,10 +52,7 @@ class NormalShader : public Shader
 {
 public:
   NormalShader(const Scene &scene)
-    : Shader(scene, vec3(0.2f, 0.2f, 0.2f)) {}// dark gray background
-
-protected:
-  vec3 shadeRay(const Ray &ray) const override;
+    : Shader(scene, ShaderType::NORMAL, vec3(0.2f, 0.2f, 0.2f)) {}// dark gray background
 };
 
 // Diffuse shader - renders with diffuse shading from lights
@@ -56,13 +60,7 @@ class DiffuseShader : public Shader
 {
 public:
   DiffuseShader(const Scene &scene, bool shadows = true)
-    : Shader(scene, vec3(0.0f, 0.0f, 0.0f), shadows) {}// black background
-
-protected:
-  vec3 shadeRay(const Ray &ray) const override;
-
-private:
-  vec3 shadeRay(const Ray &ray, int depth) const;
+    : Shader(scene, ShaderType::DIFFUSE, vec3(0.0f, 0.0f, 0.0f), shadows) {}// black background
 };
 
 // Blinn-Phong shader - ambient + diffuse + specular (halfway vector)
@@ -70,13 +68,7 @@ class BlinnPhongShader : public Shader
 {
 public:
   BlinnPhongShader(const Scene &scene, bool shadows = true)
-    : Shader(scene, vec3(0.3f, 0.3f, 0.3f), shadows) {}
-
-protected:
-  vec3 shadeRay(const Ray &ray) const override;
-
-private:
-  vec3 shadeRay(const Ray &ray, int depth) const;
+    : Shader(scene, ShaderType::BLINN_PHONG, vec3(0.3f, 0.3f, 0.3f), shadows) {}
 };
 
 // Mirror shader — every surface acts as a reflective mirror.
@@ -86,14 +78,7 @@ class MirrorShader : public Shader
 {
 public:
   MirrorShader(const Scene &scene, int maxDepth = 5)
-    : Shader(scene, vec3(0.5f, 0.7f, 1.0f)), maxDepth(maxDepth) {}// sky blue background
-
-protected:
-  vec3 shadeRay(const Ray &ray) const override;
-
-private:
-  int maxDepth;
-  vec3 shadeRay(const Ray &ray, int depth) const;
+    : Shader(scene, ShaderType::MIRROR, vec3(0.5f, 0.7f, 1.0f), true, maxDepth) {}// sky blue background
 };
 
 #endif// SHADER_H
