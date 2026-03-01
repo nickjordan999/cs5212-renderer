@@ -1,9 +1,6 @@
 add_library (cs4212-util
-  ArgumentParsing.cpp ArgumentParsing.h
   Camera.cpp
   FrameBuffer.cpp FrameBuffer.h
-  handleGraphicsArgs.cpp handleGraphicsArgs.h
-  model_obj.cpp model_obj.h
   Shader.cpp Shader.h
   vec.h
 )
