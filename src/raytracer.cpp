@@ -88,7 +88,7 @@ Scene loadScene(const std::string &preset_name, const SceneParams &params)
   } else if (preset_name == "triangle_test") {
     return ScenePresets::createTriangleTestScene();
   } else if (preset_name == "mixed_shader") {
-    return ScenePresets::createMixedShaderScene();
+    return ScenePresets::createMixedShaderScene(params);
   } else if (preset_name == "shadow_demo") {
     return ScenePresets::createShadowDemoScene();
   } else if (preset_name == "hall_of_mirrors") {

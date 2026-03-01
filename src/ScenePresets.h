@@ -414,9 +414,11 @@ public:
   // Create a scene demonstrating per-object shader assignment:
   // Three spheres and a dodecahedron, each forced to a different shading algorithm,
   // regardless of the global --shader flag.
-  static Scene createMixedShaderScene()
+  static Scene createMixedShaderScene(const SceneParams &params = {})
   {
     Scene scene;
+
+    const float mirror_sphere_height = params.count("mirror_sphere_height") ? params.at("mirror_sphere_height") : 5.0f;
 
     scene.setBackgroundColor(vec3(0.5f, 0.7f, 1.0f));
 
@@ -430,7 +432,7 @@ public:
     scene.addSphere(Sphere(vec3(4.5f, 0.0f, -4.0f), 1.0f, Material(vec3(0.3f, 0.5f, 1.0f), ShaderType::BLINN_PHONG)));
 
     // Above sphere
-    scene.addSphere(Sphere(vec3(0.0f, 5.0f, -6.0f), 3.0f, Material(vec3(0.9f, 0.9f, 0.9f), ShaderType::MIRROR)));
+    scene.addSphere(Sphere(vec3(0.0f, mirror_sphere_height, -6.0f), 3.0f, Material(vec3(0.9f, 0.9f, 0.9f), ShaderType::MIRROR)));
 
     Material floorLight(vec3(0.1f, 0.4f, 0.1f));
     scene.addPlane(Plane(vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f), floorLight));
