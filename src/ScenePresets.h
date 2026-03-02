@@ -13,6 +13,9 @@
 #include <memory>
 #include <random>
 #include <cmath>
+#include <fstream>
+#include <sstream>
+#include <stdexcept>
 #include <unordered_map>
 
 using SceneParams = std::unordered_map<std::string, float>;
@@ -567,6 +570,62 @@ public:
     scene.addLight(Light(vec3(0.0f, 0.0f, 1.0f), vec3(1.0f, 1.0f, 1.0f)));
     // back light
     scene.addLight(Light(vec3(0.0f, 0.0f, -1.0f), vec3(1.0f, 1.0f, 1.0f)));
+
+    return scene;
+  }
+  // Create a scene from a triangle list data file.
+  // The file contains comma-separated floats: every 9 floats define one triangle
+  // (3 vertices x 3 components each).
+  static Scene createTrilistScene(const std::string &filepath)
+  {
+    Scene scene;
+
+    std::ifstream file(filepath);
+    if (!file.is_open()) {
+      throw std::runtime_error("Cannot open trilist file: " + filepath);
+    }
+
+    // Parse all floats from the file (comma-separated)
+    std::vector<float> values;
+    std::string token;
+    while (std::getline(file, token, ',')) {
+      values.push_back(std::stof(token));
+    }
+
+    if (values.size() % 9 != 0) {
+      throw std::runtime_error("Trilist file must contain a multiple of 9 floats, got " + std::to_string(values.size()));
+    }
+
+    // Build triangles and track bounding box
+    vec3 bmin(1e30f, 1e30f, 1e30f);
+    vec3 bmax(-1e30f, -1e30f, -1e30f);
+
+    Material mat(vec3(0.8f, 0.8f, 0.8f));
+    for (size_t i = 0; i < values.size(); i += 9) {
+      vec3 v0(values[i+0], values[i+1], values[i+2]);
+      vec3 v1(values[i+3], values[i+4], values[i+5]);
+      vec3 v2(values[i+6], values[i+7], values[i+8]);
+      scene.addTriangle(Triangle(v0, v1, v2, mat));
+
+      for (int c = 0; c < 3; ++c) {
+        bmin[c] = std::min({bmin[c], v0[c], v1[c], v2[c]});
+        bmax[c] = std::max({bmax[c], v0[c], v1[c], v2[c]});
+      }
+    }
+
+    // Auto-fit camera: look at the center, pull back far enough to see everything
+    vec3 center = (bmin + bmax) * 0.5f;
+    vec3 extent = bmax - bmin;
+    float maxExtent = std::max({extent[0], extent[1], extent[2]});
+
+    // Position camera in front of the object (positive Z from center)
+    vec3 camPos = center + vec3(0.0f, 0.0f, maxExtent * 1.5f);
+    vec3 camDir = (center - camPos).normalized();
+    scene.setCamera(std::make_shared<PerspectiveBasicCamera>(camPos, camDir, maxExtent * 0.6f));
+
+    // Lights above and to the sides
+    scene.addLight(Light(center + vec3(maxExtent, maxExtent, maxExtent), vec3(1.0f, 1.0f, 1.0f)));
+    scene.addLight(Light(center + vec3(-maxExtent, maxExtent * 0.5f, maxExtent), vec3(0.5f, 0.5f, 0.5f)));
 
     return scene;
   }

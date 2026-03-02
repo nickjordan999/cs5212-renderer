@@ -38,6 +38,7 @@ void printUsage(const std::string &programName, const po::options_description &d
   std::cerr << "  dodecahedron         - Floating Dodecahedron" << std::endl;
   std::cerr << "  mixed_shader         - Three spheres each locked to a different shader (demo)" << std::endl;
   std::cerr << "  shadow_demo          - Single sphere on a checkerboard plane with three lights casting shadows" << std::endl;
+  std::cerr << "  trilist              - Load triangles from a data file (requires --datafile)" << std::endl;
   std::cerr << std::endl;
   std::cerr << "Available Shaders:" << std::endl;
   std::cerr << "  render               - Renders scene with material colors (default)" << std::endl;
@@ -56,12 +57,18 @@ void printUsage(const std::string &programName, const po::options_description &d
   std::cerr << "  " << programName << " -w 800 -h 600 -s diffuse -p grid --rays-per-pixel 16" << std::endl;
   std::cerr << "  " << programName << " -p spiral --scene-param t=0.5" << std::endl;
   std::cerr << "  " << programName << " --anti-aliasing off" << std::endl;
+  std::cerr << "  " << programName << " -p trilist --datafile data/trilist.dat -s diffuse" << std::endl;
 }
 
 // Load a scene by preset name
-Scene loadScene(const std::string &preset_name, const SceneParams &params)
+Scene loadScene(const std::string &preset_name, const SceneParams &params, const std::string &datafile = "")
 {
-  if (preset_name == "test") {
+  if (preset_name == "trilist") {
+    if (datafile.empty()) {
+      throw std::invalid_argument("The 'trilist' preset requires --datafile <path>");
+    }
+    return ScenePresets::createTrilistScene(datafile);
+  } else if (preset_name == "test") {
     return ScenePresets::createTestScene();
   } else if (preset_name == "lit_test") {
     return ScenePresets::createLitTestScene();
@@ -122,7 +129,7 @@ int main(int argc, char *argv[])
   try {
     // Define command-line options
     po::options_description desc("Allowed options");
-    desc.add_options()("help", "Show this help message")("anti-aliasing,a", po::value<std::string>()->default_value("on"), "Toggle anti-aliasing (on/off)")("rays-per-pixel", po::value<int>()->default_value(8), "Number of rays per pixel for anti-aliasing")("width,w", po::value<int>()->default_value(800), "Image width in pixels")("height,h", po::value<int>()->default_value(800), "Image height in pixels")("focal-length,l", po::value<float>()->default_value(1.0f), "Focal length to image plane")("scene-preset,p", po::value<std::string>()->default_value("test"), "Scene preset to use")("shader,s", po::value<std::string>()->default_value("render"), "Shader mode to use")("reflect-depth", po::value<int>()->default_value(5), "Maximum mirror reflection bounces (used by --shader mirror)")("shadows", po::value<std::string>()->default_value("on"), "Enable shadow casting (on/off)")("scene-param", po::value<std::vector<std::string>>()->composing(), "Scene parameter as key=value (e.g. t=0.5)");
+    desc.add_options()("help", "Show this help message")("anti-aliasing,a", po::value<std::string>()->default_value("on"), "Toggle anti-aliasing (on/off)")("rays-per-pixel", po::value<int>()->default_value(8), "Number of rays per pixel for anti-aliasing")("width,w", po::value<int>()->default_value(800), "Image width in pixels")("height,h", po::value<int>()->default_value(800), "Image height in pixels")("focal-length,l", po::value<float>()->default_value(1.0f), "Focal length to image plane")("scene-preset,p", po::value<std::string>()->default_value("test"), "Scene preset to use")("shader,s", po::value<std::string>()->default_value("render"), "Shader mode to use")("reflect-depth", po::value<int>()->default_value(5), "Maximum mirror reflection bounces (used by --shader mirror)")("shadows", po::value<std::string>()->default_value("on"), "Enable shadow casting (on/off)")("scene-param", po::value<std::vector<std::string>>()->composing(), "Scene parameter as key=value (e.g. t=0.5)")("datafile,d", po::value<std::string>()->default_value(""), "Path to triangle data file (used with -p trilist)");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -145,6 +152,7 @@ int main(int argc, char *argv[])
     int reflect_depth = vm["reflect-depth"].as<int>();
     std::string shadows_mode = vm["shadows"].as<std::string>();
     bool shadows_enabled = (shadows_mode == "on" || shadows_mode == "true" || shadows_mode == "1");
+    std::string datafile = vm["datafile"].as<std::string>();
 
     // Parse anti-aliasing mode
     bool anti_aliasing_enabled = false;
@@ -191,7 +199,7 @@ int main(int argc, char *argv[])
 
     // Load scene (for diffuse rendering, use lit version if available)
     Scene scene;
-    scene = loadScene(scene_preset, scene_params);
+    scene = loadScene(scene_preset, scene_params, datafile);
 
     // Update camera resolution to match requested dimensions and focal length
     // auto camera_ptr = std::make_shared<PerspectiveBasicCamera>(
