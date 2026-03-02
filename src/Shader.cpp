@@ -1,6 +1,8 @@
 #include "Shader.h"
 #include "HitRecord.h"
 #include <cmath>
+#include <thread>
+#include <vector>
 
 // --- Free helper functions for shading computations ---
 
@@ -62,18 +64,37 @@ void Shader::traceScene(FrameBuffer &fb, int raysPerPixel) const
   const Camera &camera = scene.getCamera();
   float w = fb.getWidth();
   float h = fb.getHeight();
-  for (size_t y = 0; y < static_cast<size_t>(fb.getHeight()); ++y) {
-    for (size_t x = 0; x < static_cast<size_t>(fb.getWidth()); ++x) {
-      vec3 color(0.0f, 0.0f, 0.0f);
+  size_t height = static_cast<size_t>(fb.getHeight());
+  size_t width = static_cast<size_t>(fb.getWidth());
 
-      for (int sample = 0; sample < raysPerPixel; ++sample) {
-        Ray ray = (raysPerPixel > 1) ? camera.generateRayAA(x, y, w, h) : camera.generateRay(x, y, w, h);
-        color = color + shadeRay(ray);
+  unsigned int numThreads = std::thread::hardware_concurrency();
+  if (numThreads == 0) numThreads = 4;
+
+  auto renderRows = [&](size_t yStart, size_t yEnd) {
+    for (size_t y = yStart; y < yEnd; ++y) {
+      for (size_t x = 0; x < width; ++x) {
+        vec3 color(0.0f, 0.0f, 0.0f);
+        for (int sample = 0; sample < raysPerPixel; ++sample) {
+          Ray ray = (raysPerPixel > 1) ? camera.generateRayAA(x, y, w, h) : camera.generateRay(x, y, w, h);
+          color = color + shadeRay(ray);
+        }
+        color = color * (1.0f / static_cast<float>(raysPerPixel));
+        fb.setPixel(x, y, color);
       }
-
-      color = color * (1.0f / static_cast<float>(raysPerPixel));
-      fb.setPixel(x, y, color);
     }
+  };
+
+  std::vector<std::thread> threads;
+  size_t rowsPerThread = height / numThreads;
+  size_t remainder = height % numThreads;
+  size_t yStart = 0;
+  for (unsigned int t = 0; t < numThreads; ++t) {
+    size_t yEnd = yStart + rowsPerThread + (t < remainder ? 1 : 0);
+    threads.emplace_back(renderRows, yStart, yEnd);
+    yStart = yEnd;
+  }
+  for (auto &thread : threads) {
+    thread.join();
   }
 }
 
