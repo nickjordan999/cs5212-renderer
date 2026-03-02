@@ -58,11 +58,11 @@ public:
     : Shader(scene, ShaderType::NORMAL, vec3(0.2f, 0.2f, 0.2f), true, 5, numThreads) {}// dark gray background
 };
 
-// Diffuse shader - renders with diffuse shading from lights
-class DiffuseShader : public Shader
+// Lambertian shader - renders with Lambertian (diffuse) shading from lights
+class LambertianShader : public Shader
 {
 public:
-  DiffuseShader(const Scene &scene, bool shadows = true, int numThreads = 0)
+  LambertianShader(const Scene &scene, bool shadows = true, int numThreads = 0)
     : Shader(scene, ShaderType::DIFFUSE, vec3(0.0f, 0.0f, 0.0f), shadows, 5, numThreads) {}// black background
 };
 
@@ -82,6 +82,15 @@ class MirrorShader : public Shader
 public:
   MirrorShader(const Scene &scene, int maxDepth = 5, int numThreads = 0)
     : Shader(scene, ShaderType::MIRROR, vec3(0.5f, 0.7f, 1.0f), true, maxDepth, numThreads) {}// sky blue background
+};
+
+// Path-traced diffuse shader — adds indirect lighting via cosine-weighted
+// hemisphere bounces on top of direct Lambertian shading.
+class DiffuseShader : public Shader
+{
+public:
+  DiffuseShader(const Scene &scene, bool shadows = true, int maxDepth = 5, int numThreads = 0)
+    : Shader(scene, ShaderType::PATH_DIFFUSE, vec3(0.0f, 0.0f, 0.0f), shadows, maxDepth, numThreads) {}
 };
 
 #endif// SHADER_H

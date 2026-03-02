@@ -1,8 +1,36 @@
 #include "Shader.h"
 #include "HitRecord.h"
 #include <cmath>
+#include <random>
 #include <thread>
 #include <vector>
+
+// Thread-local RNG for stochastic sampling (same pattern as Camera)
+static thread_local std::mt19937 s_rng(std::random_device{}());
+static thread_local std::uniform_real_distribution<float> s_dist(0.0f, 1.0f);
+
+// Cosine-weighted hemisphere sampling using Malley's method:
+// sample uniformly on the unit disk, then project up to the hemisphere.
+static vec3 cosineWeightedHemisphere(const vec3 &normal)
+{
+  float u1 = s_dist(s_rng);
+  float u2 = s_dist(s_rng);
+
+  // Uniform disk sample
+  float r = std::sqrt(u1);
+  float theta = 2.0f * static_cast<float>(M_PI) * u2;
+  float x = r * std::cos(theta);
+  float y = r * std::sin(theta);
+  float z = std::sqrt(1.0f - u1); // project up to hemisphere
+
+  // Build orthonormal basis from normal
+  vec3 w = normal.normalized();
+  vec3 a = (std::fabs(w[0]) > 0.9f) ? vec3(0.0f, 1.0f, 0.0f) : vec3(1.0f, 0.0f, 0.0f);
+  vec3 u = a.cross(w).normalized();
+  vec3 v = w.cross(u);
+
+  return (u * x + v * y + w * z).normalized();
+}
 
 // --- Free helper functions for shading computations ---
 
@@ -124,6 +152,13 @@ vec3 Shader::shadeRay(const Ray &ray, int depth) const
     vec3 reflected_dir = reflect(ray.getDirection().normalized(), hit->normal);
     Ray reflected_ray(hit->point, reflected_dir);
     return hit->material.color * shadeRay(reflected_ray, depth - 1);
+  }
+  case ShaderType::PATH_DIFFUSE: {
+    vec3 direct = computeDiffuse(scene, *hit, shadows);
+    vec3 bounce_dir = cosineWeightedHemisphere(hit->normal);
+    Ray bounce_ray(hit->point, bounce_dir);
+    vec3 indirect = hit->material.color * shadeRay(bounce_ray, depth - 1);
+    return direct + indirect;
   }
   }
   return background;

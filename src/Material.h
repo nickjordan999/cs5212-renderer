@@ -6,7 +6,7 @@
 #include <cmath>
 #include <optional>
 
-enum class ShaderType { SIMPLE, NORMAL, DIFFUSE, BLINN_PHONG, MIRROR };
+enum class ShaderType { SIMPLE, NORMAL, DIFFUSE, BLINN_PHONG, MIRROR, PATH_DIFFUSE };
 
 struct HSLColor {
     float h; // hue [0, 360)

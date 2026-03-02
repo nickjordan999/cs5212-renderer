@@ -566,12 +566,91 @@ public:
       vec3(0.0f, 0.0f, 1.0f), vec3(0.0f, 0.0f, -1.0f), 0.25f));
 
     // front light
-    scene.addLight(Light(vec3(0.0f, 0.0f, 1.0f), vec3(1.0f, 1.0f, 1.0f)));
+    scene.addLight(Light(vec3(0.0f, 0.0f, 1.0f), vec3(0.5f, 0.5f, 0.5f)));
     // back light
-    scene.addLight(Light(vec3(0.0f, 0.0f, -1.0f), vec3(1.0f, 1.0f, 1.0f)));
+    scene.addLight(Light(vec3(0.0f, 0.0f, -1.0f), vec3(0.5f, 0.5f, 0.5f)));
 
     return scene;
   }
+  // Random spheres of varying size and hue sitting on a white plane.
+  // Params:
+  //   number_spheres — how many spheres to place (default 20)
+  static Scene createRandomSpheresScene(const SceneParams &params = {})
+  {
+    Scene scene;
+
+    const int numSpheres = params.count("number_spheres")
+                             ? static_cast<int>(params.at("number_spheres"))
+                             : 20;
+
+    // White floor
+    Material floorWhite(vec3(0.95f, 0.95f, 0.95f));
+    scene.addPlane(Plane(vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f), floorWhite));
+
+    // Vertical back wall
+    Material wallWhite(vec3(0.90f, 0.90f, 0.90f));
+    scene.addPlane(Plane(vec3(0.0f, 0.0f, -13.0f), vec3(0.0f, 0.0f, 1.0f), wallWhite));
+
+    // RNG with fixed seed for reproducibility
+    std::mt19937 rng(42);
+    std::uniform_real_distribution<float> radiusDist(0.3f, 1.0f);
+    std::uniform_real_distribution<float> hueDist(0.0f, 360.0f);
+    std::uniform_real_distribution<float> posDist(-8.0f, 8.0f);
+    std::uniform_real_distribution<float> depthDist(-12.0f, -2.0f);
+
+    // Track placed spheres (center on xz-plane + radius) for overlap rejection
+    struct Placed
+    {
+      float x, z, r;
+    };
+    std::vector<Placed> placed;
+    placed.reserve(numSpheres);
+
+    const int maxAttempts = 200;// per sphere before giving up
+    for (int i = 0; i < numSpheres; ++i) {
+      bool ok = false;
+      for (int attempt = 0; attempt < maxAttempts; ++attempt) {
+        float radius = radiusDist(rng);
+        float x = posDist(rng);
+        float z = depthDist(rng);
+
+        // Check against all previously placed spheres (xz distance vs sum of radii)
+        bool overlaps = false;
+        for (const auto &p : placed) {
+          float dx = x - p.x;
+          float dz = z - p.z;
+          if (dx * dx + dz * dz < (radius + p.r) * (radius + p.r)) {
+            overlaps = true;
+            break;
+          }
+        }
+        if (overlaps) continue;
+
+        placed.push_back({ x, z, radius });
+        // Every 1-in-6 sphere is a mirror
+        if (i % 6 == 0) {
+          scene.addSphere(Sphere(vec3(x, radius, z), radius, Material::Mirror()));
+        } else {
+          vec3 color = HSLColor(hueDist(rng), 1.0f, 0.5f).toRgb();
+          scene.addSphere(Sphere(vec3(x, radius, z), radius, Material(color)));
+        }
+        ok = true;
+        break;
+      }
+      if (!ok) break;// couldn't place any more without overlap
+    }
+
+    // Camera and lights copied from shadow demo
+    scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
+      vec3(-2.0f, 5.0f, 2.0f), vec3(.1f, -0.5f, -1.0f), 1.5f));
+
+    scene.addLight(Light(vec3(-5.0f, 6.0f, -2.0f), vec3(0.1f, 0.1f, 0.1f)));
+    scene.addLight(Light(vec3(5.0f, 6.0f, -2.0f), vec3(0.3f, 0.3f, 0.3f)));
+    scene.addLight(Light(vec3(0.0f, 7.0f, -10.0f), vec3(0.2f, 0.2f, 0.2f)));
+
+    return scene;
+  }
+
   // Create a scene from a triangle list data file.
   // The file contains comma-separated floats: every 9 floats define one triangle
   // (3 vertices x 3 components each).

@@ -82,10 +82,10 @@ Use `-p` or `--scene-preset` to choose a built-in scene:
 ./buildVCPkg/src/raytracer -p platonic -s blinnphong -w 1200 -h 600 > platonic.png
 
 # Dodecahedron with colored lights
-./buildVCPkg/src/raytracer -p dodecahedron -s diffuse > dodecahedron.png
+./buildVCPkg/src/raytracer -p dodecahedron -s lambertian > dodecahedron.png
 
 # Spiral of 500 spheres
-./buildVCPkg/src/raytracer -p spiral -s diffuse -w 800 -h 800 > spiral.png
+./buildVCPkg/src/raytracer -p spiral -s lambertian -w 800 -h 800 > spiral.png
 
 # Mixed shader demo (per-object shader overrides)
 ./buildVCPkg/src/raytracer -p mixed_shader -s blinnphong > mixed.png
@@ -108,8 +108,8 @@ Use `-s` or `--shader` to choose the rendering algorithm:
 # Surface normal visualization (useful for debugging)
 ./buildVCPkg/src/raytracer -p platonic -s normalshader > normals.png
 
-# Diffuse (Lambertian) shading
-./buildVCPkg/src/raytracer -p platonic -s diffuse > diffuse.png
+# Lambertian (diffuse) shading
+./buildVCPkg/src/raytracer -p platonic -s lambertian > lambertian.png
 
 # Blinn-Phong shading (diffuse + specular highlights)
 ./buildVCPkg/src/raytracer -p platonic -s blinnphong > blinnphong.png
@@ -118,7 +118,7 @@ Use `-s` or `--shader` to choose the rendering algorithm:
 ./buildVCPkg/src/raytracer -p checkerboard -s mirror --reflect-depth 8 > mirror.png
 ```
 
-Available shaders: `render`, `normalshader`, `diffuse`, `blinnphong`, `mirror`.
+Available shaders: `render`, `normalshader`, `lambertian`, `blinnphong`, `mirror`.
 
 ### Anti-aliasing
 
@@ -205,14 +205,14 @@ This renders 60 frames at 800x600 using the `mixed_shader` preset with `blinnpho
 # Animate camera position along the spiral scene
 ./render_movie.sh \
   --param t --min -0.1 --max 0.9 \
-  --preset spiral --shader diffuse \
+  --preset spiral --shader lambertian \
   --frames 300 --fps 60 \
   --output spiral_flythrough.mp4
 
 # Animate hue shift in the spiral
 ./render_movie.sh \
   --param hue_shift --min 0 --max 360 \
-  --preset spiral --shader diffuse \
+  --preset spiral --shader lambertian \
   --frames 90 \
   --output hue_cycle.mp4
 ```
