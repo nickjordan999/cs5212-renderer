@@ -108,8 +108,18 @@ done
 echo ""
 echo "Encoding $OUTPUT at ${FPS} fps..."
 
-ffmpeg -y -framerate "$FPS" -i "$TMPDIR/frame_%04d.png" \
-  -c:v libx264 -pix_fmt yuv420p -movflags +faststart \
-  "$OUTPUT" 2>/dev/null
+# Choose encoding based on output file extension
+case "$OUTPUT" in
+  *.gif)
+    ffmpeg -y -framerate "$FPS" -i "$TMPDIR/frame_%04d.png" \
+      -vf "split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" \
+      "$OUTPUT" 2>/dev/null
+    ;;
+  *)
+    ffmpeg -y -framerate "$FPS" -i "$TMPDIR/frame_%04d.png" \
+      -c:v libx264 -pix_fmt yuv420p -movflags +faststart \
+      "$OUTPUT" 2>/dev/null
+    ;;
+esac
 
 echo "Done: $OUTPUT"
