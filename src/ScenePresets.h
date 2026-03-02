@@ -149,7 +149,7 @@ public:
     Scene scene;
 
     // Create spheres spiraling around the z-axis with HSL hue cycling
-    const int numSpheres = params.count("num_spheres") ? static_cast<int>(params.at("num_spheres")) : 500;
+    const int numSpheres = params.count("num_spheres") ? static_cast<int>(params.at("num_spheres")) : 100;
     const float radius = 1.0f;
     const float spacing = 2.0f * radius;
     const float spiralRadius = 5.0f;
@@ -166,7 +166,7 @@ public:
       float x = spiralRadius * std::cos(angle);
       float y = spiralRadius * std::sin(angle);
 
-      float hue_shift = params.count("hue_shift") ? params.at("hue_shift") : 0.0f;// Cycle hue across all spheres, max saturation and lightness
+      float hue_shift = params.count("hue_shift") ? params.at("hue_shift") : 270.0f;// Cycle hue across all spheres, max saturation and lightness
       float hue = std::fmod((i / static_cast<float>(numSpheres)) * 360.0f + hue_shift, 360.f);
       vec3 color = HSLColor(hue, 1.0f, 0.5f).toRgb();
 
@@ -174,7 +174,7 @@ public:
     }
 
     // Position camera along the spiral's z-extent based on parameter t
-    float t = params.count("t") ? params.at("t") : -0.1f;
+    float t = params.count("t") ? params.at("t") : 0.15f;
     float totalZ = (numSpheres - 1) * spacing;
     scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
       vec3(0.0f, 0.0f, -t * totalZ), vec3(0.0f, 0.0f, -1.0f), 2.0f));
@@ -386,10 +386,8 @@ public:
 
     const float phi = (1.0f + std::sqrt(5.0f)) / 2.0f;
 
-    // Checkerboard floor
-    Material floorBlack(vec3(0.1f, 0.1f, 0.1f));
     Material floorWhite(vec3(0.9f, 0.9f, 0.9f));
-    scene.addPlane(Plane(vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f), floorBlack, floorWhite, 2.0f));
+    scene.addPlane(Plane(vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f), floorWhite));
 
     // Shared scale: normalize each solid so circumradius ≈ 1.5
     float sUniform = 1.5f / std::sqrt(3.0f);// for tet, cube, dodec (circumR = √3)
@@ -401,6 +399,7 @@ public:
     scene.addSolid(Solid::Tetrahedron(), vec3(-7.0f, y, -8.0f), sUniform, Material(vec3(1.0f, 0.2f, 0.2f)));
     scene.addSolid(Solid::Cube(), vec3(-3.5f, y, -8.0f), sUniform, Material(vec3(0.2f, 0.4f, 1.0f)));
     scene.addSolid(Solid::Octahedron(), vec3(0.0f, y, -8.0f), sOcta, Material(vec3(1.0f, 0.84f, 0.0f)));
+    scene.addSolid(Solid::Dodecahedron(), vec3(3.5f, y, -8.0f), sUniform, Material(vec3(1.0f, 0.6f, 0.2f)));
     scene.addSolid(Solid::Icosahedron(), vec3(7.0f, y, -8.0f), sIcosa, Material(vec3(0.2f, 1.0f, 0.3f)));
 
     // Camera: pulled back and elevated to see all five solids
@@ -409,7 +408,7 @@ public:
 
     // Lights
     scene.addLight(Light(vec3(5.0f, 10.0f, 5.0f), vec3(1.0f, 1.0f, 1.0f)));
-    scene.addLight(Light(vec3(-8.0f, 8.0f, 0.0f), vec3(0.5f, 0.5f, 0.5f)));
+    scene.addLight(Light(vec3(-8.0f, 8.0f, -20.0f), vec3(0.7f, 0.7f, 0.7f)));
 
     return scene;
   }
@@ -602,21 +601,21 @@ public:
 
     Material mat(vec3(0.8f, 0.8f, 0.8f));
     for (size_t i = 0; i < values.size(); i += 9) {
-      vec3 v0(values[i+0], values[i+1], values[i+2]);
-      vec3 v1(values[i+3], values[i+4], values[i+5]);
-      vec3 v2(values[i+6], values[i+7], values[i+8]);
+      vec3 v0(values[i + 0], values[i + 1], values[i + 2]);
+      vec3 v1(values[i + 3], values[i + 4], values[i + 5]);
+      vec3 v2(values[i + 6], values[i + 7], values[i + 8]);
       scene.addTriangle(Triangle(v0, v1, v2, mat));
 
       for (int c = 0; c < 3; ++c) {
-        bmin[c] = std::min({bmin[c], v0[c], v1[c], v2[c]});
-        bmax[c] = std::max({bmax[c], v0[c], v1[c], v2[c]});
+        bmin[c] = std::min({ bmin[c], v0[c], v1[c], v2[c] });
+        bmax[c] = std::max({ bmax[c], v0[c], v1[c], v2[c] });
       }
     }
 
     // Auto-fit camera: look at the center, pull back far enough to see everything
     vec3 center = (bmin + bmax) * 0.5f;
     vec3 extent = bmax - bmin;
-    float maxExtent = std::max({extent[0], extent[1], extent[2]});
+    float maxExtent = std::max({ extent[0], extent[1], extent[2] });
 
     // Position camera in front of the object (positive Z from center)
     vec3 camPos = center + vec3(0.0f, 0.0f, maxExtent * 1.5f);
