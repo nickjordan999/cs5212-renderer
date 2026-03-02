@@ -1,151 +1,242 @@
-This project uses CMake and vcpkg for managing C++ dependencies. It serves as a simple example to test your build setup before we get into more complicted code.
+# CS5212 RayTracer
 
-## Building Using CMake Presets
+Raytracer built for UMD CS5212 Computer Graphics Course.
 
-We have several CMake Build Presets that are outlined in the CMakePresets.json. Some are for building for Release or Debug mode. Running the default setup is just fine too.
+This is a simple ray tracer that supports:
+- Output to PNG images
+- Perspective Camera
+- Sphere, Triangle, and Plane primitives
+- Multiple shader implementations:
+  - Simple (flat material colors)
+  - Diffuse (Lambertian shading with ambient light)
+  - Blinn-Phong (diffuse + specular highlights)
+  - Normal (surface normal visualization)
+  - Mirror (recursive reflections)
+- Per-object shader overrides
+- Jittered anti-aliasing
+- Shadow casting
+- Animated movie rendering via parameter sweeps
 
-```
-cd <path/to/this source>
-cmake --preset=default
-```
+## Building the Project
 
-Each preset defines its own build directory and various build variables that are important on that system.
+The project uses CMake with vcpkg for dependency management. You need:
+- A C++20 compiler
+- CMake 3.22+
+- vcpkg (for managing dependencies)
+- ffmpeg (optional, for movie rendering)
 
-Then, to build this source, you would
+### Build steps
 
-```
-cd buildVCPkg
-cmake --build .
-```
+```bash
+# Configure with vcpkg toolchain
+cmake -B buildVCPkg -S . \
+  -DCMAKE_TOOLCHAIN_FILE=<path-to-vcpkg>/scripts/buildsystems/vcpkg.cmake
 
-Your executables will then be in the build folder. They may be in sub-folders depending on the environment.
-
-
-
-## Development Environment Setup
-
-Before you get too deep into this, you will need some tools, depending on your operating system and hardware. To build this, you do need some development tools for C++. The following sections will help with each of your specific environments.  Minimally, you need a terminal, a good C++ editor, a git command line client, and of course a C++ compiler toolchain.
-
-### Linux
-
-The following command in Ubuntu (or related) Linux will get you most of what you might
-
-```
-sudo apt-get install build-essential cmake git g++
-```
-
-### macOS
-
-On macOS, you'll will need to get Apple's Xcode development environment and IDE installed. It's on the AppStore.
-
-After this, you will want to install Brew:
-
-```
-https://brew.sh/
+# Build
+cmake --build buildVCPkg
 ```
 
-Brew is a package installer for mac os that works well.  You can install pretty much any package with Brew that are available on Linux machines.
+The raytracer binary will be at `buildVCPkg/src/raytracer`.
 
-```
-brew install cmake
-```
+## Running Tests
 
-will get you initially started.
+Unit tests use the [Catch2](https://github.com/catchorg/Catch2) framework and cover core primitives (vec, Ray, Sphere, Triangle, FrameBuffer).
 
+```bash
+# Run all tests
+cd buildVCPkg && ctest
 
-### Windows
+# Run all tests with output shown
+cd buildVCPkg && ctest --output-on-failure
 
-Building on Windows requires installing a few packages:
-
-* Visual Studio Community Edition 2022 (or newer - such as 2026) - this includes Microsoft's C++ compiler
-* CMake https://cmake.org/download/
-* Git Bash https://git-scm.com/downloads - You can use the powershell, but this is a nice Unix terminal for Windows and it comes with git
-* VS Code https://code.visualstudio.com - VSCode is a nice editor for C++
-
-When you install Microsoft Visual Studio Community Edition, feel free
-to add whatever development languages and frameworks you want, but
-certainly add C++ and the graphics libraries (DirectX, etc...). Once
-the development environments are installed, make sure to setup your
-git SSH keys if you want.
-
-
-# vcpkg - Generalized Build Instructions for Windows, macos and Linux
-
-Once you have some of the items above, it's time to make sure you've got vcpkg ready on your development machine.
-
-We support a more generalized build system using vcpkg [https://learn.microsoft.com/en-us/vcpkg/get_started/overview](https://learn.microsoft.com/en-us/vcpkg/get_started/overview) and CMake build presets. Vcpkg is a C++ package manager used to pull the dependencies needed to build this code. When used in this way, the cmake build system will pull the needed requirements and not rely on installed system dependencies (meaning you shouldn't have to install all sorts of things, ideally). This can result in the initial build being a little slower as the required dependencies are pulled and compiled, but it does mean that you do not have to manually install our dependencies.
-
-## Setting up vcpkg
-
-To setup vcpkg, you will need to clone the vcpkg repository and setup environment variables that CMake can use to locate your vcpkg install.  More information on vcpkg and specific details for setting it up on different systems (Windows vs. Linux-based systems) can be found here: [https://learn.microsoft.com/en-us/vcpkg/get_started/overview](https://learn.microsoft.com/en-us/vcpkg/get_started/overview). 
-
-Determine a location where you want vcpkg installed. It can be in system location for all users or cloned into your own user account. After cloning, be sure to run the bootstrap batch file in the vcpkg folder.
-
-### TLDR; On Windows
-
-Using git-bash, change directories to where you store your development files. Then, clone vcpkg, as shown below:
-
-```
-git clone https://github.com/microsoft/vcpkg.git
-cd vcpkg
-bootstrap-vcpkg.bat
+# Run a specific test
+cd buildVCPkg && ctest -R utest_Sphere
 ```
 
-Next, you will need to create the VCPKG_ROOT environment variable to point to the location of the vcpkg local repository on your system. You should also add the vcpkg root to your PATH variable. The following focuses on Windows, but the same ideas are needed on Unix systems and your shell's environment variables. On Windows, the ideal way to do this so that it is permanent is to set the variables using the Windows System Environment Variables panel from Settings. You can get to this by searching for Environment in the Windows menu. You will need something like the following:
+## Using the raytracer command-line application
 
-```
-VCPKG_ROOT = "C:\path\to\vcpkg"
-```
-Then, make sure the VCPKG_ROOT is also in your user Path variable.  You should be able to just add another folder path to the VCPKG_ROOT location.
+The renderer outputs PNG data to stdout. Redirect it to a file or pipe it to an image viewer.
 
-You will need to quit your Powershell (or git-bash) after this and bring up a new window so the PATH variable information gets propoated.
+### Basic usage
 
+```bash
+# Render with defaults (800x800, test scene, simple shader)
+./buildVCPkg/src/raytracer > output.png
 
-### TLDR; On Linux and macOS
-
-Using a terminal, change directories to where you store your development files. Then, clone vcpkg, as shown below:
-
-```
-git clone https://github.com/microsoft/vcpkg.git
-cd vcpkg
-./bootstrap-vcpkg.sh
+# Specify dimensions
+./buildVCPkg/src/raytracer -w 1024 -h 768 > output.png
 ```
 
-Next, you will need to create the VCPKG_ROOT environment variable to point to the location of the vcpkg local repository on your system. You should also add the vcpkg root to your PATH variable. On Linux, you will need to determine which shell environment you use.  For bash, you would edit the ~/.bashrc file, and modify the PATH variable a bit, as shown below:
+### Selecting a scene preset
+
+Use `-p` or `--scene-preset` to choose a built-in scene:
+
+```bash
+# All five Platonic solids on a checkerboard
+./buildVCPkg/src/raytracer -p platonic -s blinnphong -w 1200 -h 600 > platonic.png
+
+# Dodecahedron with colored lights
+./buildVCPkg/src/raytracer -p dodecahedron -s diffuse > dodecahedron.png
+
+# Spiral of 500 spheres
+./buildVCPkg/src/raytracer -p spiral -s diffuse -w 800 -h 800 > spiral.png
+
+# Mixed shader demo (per-object shader overrides)
+./buildVCPkg/src/raytracer -p mixed_shader -s blinnphong > mixed.png
+
+# Shadow demo with three colored lights
+./buildVCPkg/src/raytracer -p shadow_demo -s blinnphong > shadows.png
 
 ```
-export VCPKG_ROOT=/home/willemsn/dev/vcpkg
-export PATH="$PATH":"$VCPKG_ROOT"
+
+Available presets: `test`, `lit_test`, `single_sphere`, `grid`, `aligned`, `spiral`, `pyramid`, `octahedron`, `dodecahedron`, `checkerboard`, `hexboard`, `platonic`, `triangle_test`, `mixed_shader`, `shadow_demo`, `hall_of_mirrors`.
+
+### Selecting a shader
+
+Use `-s` or `--shader` to choose the rendering algorithm:
+
+```bash
+# Flat material colors (no lighting)
+./buildVCPkg/src/raytracer -p platonic -s render > flat.png
+
+# Surface normal visualization (useful for debugging)
+./buildVCPkg/src/raytracer -p platonic -s normalshader > normals.png
+
+# Diffuse (Lambertian) shading
+./buildVCPkg/src/raytracer -p platonic -s diffuse > diffuse.png
+
+# Blinn-Phong shading (diffuse + specular highlights)
+./buildVCPkg/src/raytracer -p platonic -s blinnphong > blinnphong.png
+
+# Mirror shader (every surface reflects)
+./buildVCPkg/src/raytracer -p checkerboard -s mirror --reflect-depth 8 > mirror.png
 ```
 
-The instructions are similar for macOS. Determine which shell you use (typically zsh), and then add similar lines to the ~/.zprofile file.
+Available shaders: `render`, `normalshader`, `diffuse`, `blinnphong`, `mirror`.
 
-Then, when you restart your terminals, you should be able to run the vcpkg program:
-```
-vcpkg
-```
+### Anti-aliasing
 
-### Running unit-tests
+Anti-aliasing is on by default (8 rays per pixel). You can adjust or disable it:
 
-Unit tests are found in `src/utests`.  To run the unit test suite run `ctest` from the build directory.
+```bash
+# Disable anti-aliasing (fastest, but jagged edges)
+./buildVCPkg/src/raytracer -p platonic -s blinnphong --anti-aliasing off > fast.png
 
-### PNG Writer example app
-
-The pngWriter example app is for initial testing of the Frame Buffer and writing out to PNG format.  To just build the pngWriter app run:
-
-```
-cmake --preset default && cmake --build buildVCPkg --target pngWriter
+# High-quality anti-aliasing (32 samples per pixel)
+./buildVCPkg/src/raytracer -p platonic -s blinnphong --rays-per-pixel 32 > smooth.png
 ```
 
-Some example usage:
+### Shadows
 
+Shadow casting is on by default. Disable with `--shadows off`:
+
+```bash
+# Compare with and without shadows
+./buildVCPkg/src/raytracer -p shadow_demo -s blinnphong > with_shadows.png
+./buildVCPkg/src/raytracer -p shadow_demo -s blinnphong --shadows off > no_shadows.png
 ```
-# create a solid color ping with width and height equal to 250 pixels
-./src/pngWriter solid 250 250 275d5e > solid.png
 
-# create a linearly interpolated 2 color gradient, rotated by 30 from vertical
-./src/pngWriter gradient 1000 1000 00FFFF FFFFAA 30 > gradient_30.png
+### Scene parameters
 
-# create a gradient which blends color based on an initial set of point colors
-./pngWriter multipoint 200 200 50:50:FF0000 150:150:0000FF 100:100:00FFFF > 3pt.png
+Some presets accept numeric parameters via `--scene-param key=value`:
+
+```bash
+# Spiral scene: position the camera at 50% along the spiral
+./buildVCPkg/src/raytracer -p spiral -s diffuse --scene-param t=0.5 > spiral_mid.png
+
+# Spiral scene: customize sphere count and turns
+./buildVCPkg/src/raytracer -p spiral -s diffuse \
+  --scene-param num_spheres=200 \
+  --scene-param spiral_turns=30 \
+  --scene-param t=0.3 > spiral_custom.png
+
+# Mixed shader scene: adjust the mirror sphere height
+./buildVCPkg/src/raytracer -p mixed_shader -s blinnphong \
+  --scene-param mirror_sphere_height=3.0 > mixed_low.png
 ```
+
+### Full options reference
+
+Run `./buildVCPkg/src/raytracer --help` to see all options:
+
+| Option | Short | Default | Description |
+|--------|-------|---------|-------------|
+| `--width` | `-w` | 800 | Image width in pixels |
+| `--height` | `-h` | 800 | Image height in pixels |
+| `--scene-preset` | `-p` | test | Scene preset name |
+| `--shader` | `-s` | render | Shader mode |
+| `--anti-aliasing` | `-a` | on | Toggle anti-aliasing (on/off) |
+| `--rays-per-pixel` | | 8 | Samples per pixel for AA |
+| `--reflect-depth` | | 5 | Max mirror reflection bounces |
+| `--shadows` | | on | Enable shadow casting (on/off) |
+| `--scene-param` | | | Scene parameter as key=value |
+
+## Creating Movies
+
+The `render_movie.sh` script renders a sequence of frames by sweeping a scene parameter from a minimum to a maximum value, then encodes them into an MP4 video using ffmpeg.
+
+### Basic usage
+
+```bash
+# Animate the mirror sphere height from 2 to 8
+./render_movie.sh --param mirror_sphere_height --min 2.0 --max 8.0
+```
+
+This renders 60 frames at 800x600 using the `mixed_shader` preset with `blinnphong` shading, and produces `movie.mp4`.
+
+### Customizing the render
+
+```bash
+# Higher resolution, more frames, with anti-aliasing
+./render_movie.sh \
+  --param mirror_sphere_height --min 1.0 --max 10.0 \
+  --frames 120 \
+  --width 1280 --height 720 \
+  --aa on \
+  --fps 24 \
+  --output sphere_anim.mp4
+
+# Animate camera position along the spiral scene
+./render_movie.sh \
+  --param t --min -0.1 --max 0.9 \
+  --preset spiral --shader diffuse \
+  --frames 300 --fps 60 \
+  --output spiral_flythrough.mp4
+
+# Animate hue shift in the spiral
+./render_movie.sh \
+  --param hue_shift --min 0 --max 360 \
+  --preset spiral --shader diffuse \
+  --frames 90 \
+  --output hue_cycle.mp4
+```
+
+### Passing extra renderer flags
+
+Use `--` to forward additional arguments to the renderer:
+
+```bash
+# Animate with higher reflection depth
+./render_movie.sh \
+  --param mirror_sphere_height --min 2.0 --max 8.0 \
+  --preset mixed_shader --shader mirror \
+  -- --reflect-depth 10
+```
+
+### All render_movie.sh options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--param` | *(required)* | Scene parameter name to animate |
+| `--min` | *(required)* | Starting value |
+| `--max` | *(required)* | Ending value |
+| `--frames` | 60 | Number of frames to render |
+| `--preset` | mixed_shader | Scene preset |
+| `--shader` | blinnphong | Shader mode |
+| `--width` | 800 | Image width |
+| `--height` | 600 | Image height |
+| `--fps` | 30 | Output video frame rate |
+| `--aa` | off | Anti-aliasing (on/off) |
+| `--output` | movie.mp4 | Output video file path |
+| `--renderer` | buildVCPkg/src/raytracer | Path to renderer binary |
+| `--` | | Extra arguments passed to renderer |
