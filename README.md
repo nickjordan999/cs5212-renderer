@@ -17,6 +17,10 @@ This is a simple ray tracer that supports:
 - Shadow casting
 - Animated movie rendering via parameter sweeps
 
+## Gallery
+
+![Mirror animation](renderings/mirror.gif)
+
 ## Building the Project
 
 The project uses CMake with vcpkg for dependency management. You need:
@@ -240,3 +244,4 @@ Use `--` to forward additional arguments to the renderer:
 | `--output` | movie.mp4 | Output video file path |
 | `--renderer` | buildVCPkg/src/raytracer | Path to renderer binary |
 | `--` | | Extra arguments passed to renderer |
+
