@@ -67,8 +67,8 @@ void Shader::traceScene(FrameBuffer &fb, int raysPerPixel) const
   size_t height = static_cast<size_t>(fb.getHeight());
   size_t width = static_cast<size_t>(fb.getWidth());
 
-  unsigned int numThreads = std::thread::hardware_concurrency();
-  if (numThreads == 0) numThreads = 4;
+  unsigned int threadCount = numThreads > 0 ? numThreads : std::thread::hardware_concurrency();
+  if (threadCount == 0) threadCount = 4;
 
   auto renderRows = [&](size_t yStart, size_t yEnd) {
     for (size_t y = yStart; y < yEnd; ++y) {
@@ -85,10 +85,10 @@ void Shader::traceScene(FrameBuffer &fb, int raysPerPixel) const
   };
 
   std::vector<std::thread> threads;
-  size_t rowsPerThread = height / numThreads;
-  size_t remainder = height % numThreads;
+  size_t rowsPerThread = height / threadCount;
+  size_t remainder = height % threadCount;
   size_t yStart = 0;
-  for (unsigned int t = 0; t < numThreads; ++t) {
+  for (unsigned int t = 0; t < threadCount; ++t) {
     size_t yEnd = yStart + rowsPerThread + (t < remainder ? 1 : 0);
     threads.emplace_back(renderRows, yStart, yEnd);
     yStart = yEnd;

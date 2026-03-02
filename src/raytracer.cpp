@@ -49,6 +49,7 @@ void printUsage(const std::string &programName, const po::options_description &d
   std::cerr << std::endl;
   std::cerr << "Rendering Options:" << std::endl;
   std::cerr << "  --shadows on/off     - Enable or disable shadow casting (default: on)" << std::endl;
+  std::cerr << "  --threads <int>      - Number of rendering threads (default: CPU core count)" << std::endl;
   std::cerr << std::endl;
   std::cerr << "Options:" << std::endl;
   std::cerr << desc << std::endl;
@@ -107,18 +108,18 @@ Scene loadScene(const std::string &preset_name, const SceneParams &params, const
 }
 
 // Create a shader based on the rendering mode
-std::unique_ptr<Shader> createShader(const std::string &mode, const Scene &scene, int reflectDepth, bool shadows)
+std::unique_ptr<Shader> createShader(const std::string &mode, const Scene &scene, int reflectDepth, bool shadows, int numThreads)
 {
   if (mode == "render") {
-    return std::make_unique<SimpleShader>(scene);
+    return std::make_unique<SimpleShader>(scene, numThreads);
   } else if (mode == "normalshader") {
-    return std::make_unique<NormalShader>(scene);
+    return std::make_unique<NormalShader>(scene, numThreads);
   } else if (mode == "diffuse") {
-    return std::make_unique<DiffuseShader>(scene, shadows);
+    return std::make_unique<DiffuseShader>(scene, shadows, numThreads);
   } else if (mode == "blinnphong") {
-    return std::make_unique<BlinnPhongShader>(scene, shadows);
+    return std::make_unique<BlinnPhongShader>(scene, shadows, numThreads);
   } else if (mode == "mirror") {
-    return std::make_unique<MirrorShader>(scene, reflectDepth);
+    return std::make_unique<MirrorShader>(scene, reflectDepth, numThreads);
   } else {
     throw std::invalid_argument("Unknown shader mode: " + mode);
   }
@@ -129,7 +130,7 @@ int main(int argc, char *argv[])
   try {
     // Define command-line options
     po::options_description desc("Allowed options");
-    desc.add_options()("help", "Show this help message")("anti-aliasing,a", po::value<std::string>()->default_value("on"), "Toggle anti-aliasing (on/off)")("rays-per-pixel", po::value<int>()->default_value(8), "Number of rays per pixel for anti-aliasing")("width,w", po::value<int>()->default_value(800), "Image width in pixels")("height,h", po::value<int>()->default_value(800), "Image height in pixels")("focal-length,l", po::value<float>()->default_value(1.0f), "Focal length to image plane")("scene-preset,p", po::value<std::string>()->default_value("test"), "Scene preset to use")("shader,s", po::value<std::string>()->default_value("render"), "Shader mode to use")("reflect-depth", po::value<int>()->default_value(5), "Maximum mirror reflection bounces (used by --shader mirror)")("shadows", po::value<std::string>()->default_value("on"), "Enable shadow casting (on/off)")("scene-param", po::value<std::vector<std::string>>()->composing(), "Scene parameter as key=value (e.g. t=0.5)")("datafile,d", po::value<std::string>()->default_value(""), "Path to triangle data file (used with -p trilist)");
+    desc.add_options()("help", "Show this help message")("anti-aliasing,a", po::value<std::string>()->default_value("on"), "Toggle anti-aliasing (on/off)")("rays-per-pixel", po::value<int>()->default_value(8), "Number of rays per pixel for anti-aliasing")("width,w", po::value<int>()->default_value(800), "Image width in pixels")("height,h", po::value<int>()->default_value(800), "Image height in pixels")("focal-length,l", po::value<float>()->default_value(1.0f), "Focal length to image plane")("scene-preset,p", po::value<std::string>()->default_value("test"), "Scene preset to use")("shader,s", po::value<std::string>()->default_value("render"), "Shader mode to use")("reflect-depth", po::value<int>()->default_value(5), "Maximum mirror reflection bounces (used by --shader mirror)")("shadows", po::value<std::string>()->default_value("on"), "Enable shadow casting (on/off)")("threads", po::value<int>()->default_value(0), "Number of rendering threads (0 = auto-detect)")("scene-param", po::value<std::vector<std::string>>()->composing(), "Scene parameter as key=value (e.g. t=0.5)")("datafile,d", po::value<std::string>()->default_value(""), "Path to triangle data file (used with -p trilist)");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -152,6 +153,7 @@ int main(int argc, char *argv[])
     int reflect_depth = vm["reflect-depth"].as<int>();
     std::string shadows_mode = vm["shadows"].as<std::string>();
     bool shadows_enabled = (shadows_mode == "on" || shadows_mode == "true" || shadows_mode == "1");
+    int num_threads = vm["threads"].as<int>();
     std::string datafile = vm["datafile"].as<std::string>();
 
     // Parse anti-aliasing mode
@@ -209,7 +211,7 @@ int main(int argc, char *argv[])
     // scene.setCamera(camera_ptr);
 
     // Create appropriate shader
-    auto shader = createShader(shader_mode, scene, reflect_depth, shadows_enabled);
+    auto shader = createShader(shader_mode, scene, reflect_depth, shadows_enabled, num_threads);
 
     // Create framebuffer and render
     FrameBuffer fb(width, height);

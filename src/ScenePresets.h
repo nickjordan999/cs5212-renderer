@@ -620,7 +620,7 @@ public:
     // Position camera in front of the object (positive Z from center)
     vec3 camPos = center + vec3(0.0f, 0.0f, maxExtent * 1.5f);
     vec3 camDir = (center - camPos).normalized();
-    scene.setCamera(std::make_shared<PerspectiveBasicCamera>(camPos, camDir, maxExtent * 0.6f));
+    scene.setCamera(std::make_shared<PerspectiveBasicCamera>(camPos, camDir, 2.0f * maxExtent * 0.6f));
 
     // Lights above and to the sides
     scene.addLight(Light(center + vec3(maxExtent, maxExtent, maxExtent), vec3(1.0f, 1.0f, 1.0f)));

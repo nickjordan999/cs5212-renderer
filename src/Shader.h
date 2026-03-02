@@ -20,12 +20,14 @@ public:
 
 protected:
   Shader(const Scene &scene, ShaderType defaultShaderType,
-         const vec3 &defaultBackground, bool shadows = true, int maxDepth = 5)
+         const vec3 &defaultBackground, bool shadows = true, int maxDepth = 5,
+         int numThreads = 0)
     : scene(scene),
       background(scene.getBackgroundColor().value_or(defaultBackground)),
       shadows(shadows),
       defaultShaderType(defaultShaderType),
-      maxDepth(maxDepth) {}
+      maxDepth(maxDepth),
+      numThreads(numThreads) {}
 
   const Scene &scene;
   vec3 background;
@@ -34,6 +36,7 @@ protected:
 private:
   ShaderType defaultShaderType;
   int maxDepth;
+  int numThreads;
 
   vec3 shadeRay(const Ray &ray) const;
   vec3 shadeRay(const Ray &ray, int depth) const;
@@ -43,32 +46,32 @@ private:
 class SimpleShader : public Shader
 {
 public:
-  SimpleShader(const Scene &scene)
-    : Shader(scene, ShaderType::SIMPLE, vec3(0.5f, 0.7f, 1.0f)) {}// sky blue background
+  SimpleShader(const Scene &scene, int numThreads = 0)
+    : Shader(scene, ShaderType::SIMPLE, vec3(0.5f, 0.7f, 1.0f), true, 5, numThreads) {}// sky blue background
 };
 
 // Normal shader - visualizes surface normals
 class NormalShader : public Shader
 {
 public:
-  NormalShader(const Scene &scene)
-    : Shader(scene, ShaderType::NORMAL, vec3(0.2f, 0.2f, 0.2f)) {}// dark gray background
+  NormalShader(const Scene &scene, int numThreads = 0)
+    : Shader(scene, ShaderType::NORMAL, vec3(0.2f, 0.2f, 0.2f), true, 5, numThreads) {}// dark gray background
 };
 
 // Diffuse shader - renders with diffuse shading from lights
 class DiffuseShader : public Shader
 {
 public:
-  DiffuseShader(const Scene &scene, bool shadows = true)
-    : Shader(scene, ShaderType::DIFFUSE, vec3(0.0f, 0.0f, 0.0f), shadows) {}// black background
+  DiffuseShader(const Scene &scene, bool shadows = true, int numThreads = 0)
+    : Shader(scene, ShaderType::DIFFUSE, vec3(0.0f, 0.0f, 0.0f), shadows, 5, numThreads) {}// black background
 };
 
 // Blinn-Phong shader - ambient + diffuse + specular (halfway vector)
 class BlinnPhongShader : public Shader
 {
 public:
-  BlinnPhongShader(const Scene &scene, bool shadows = true)
-    : Shader(scene, ShaderType::BLINN_PHONG, vec3(0.3f, 0.3f, 0.3f), shadows) {}
+  BlinnPhongShader(const Scene &scene, bool shadows = true, int numThreads = 0)
+    : Shader(scene, ShaderType::BLINN_PHONG, vec3(0.3f, 0.3f, 0.3f), shadows, 5, numThreads) {}
 };
 
 // Mirror shader — every surface acts as a reflective mirror.
@@ -77,8 +80,8 @@ public:
 class MirrorShader : public Shader
 {
 public:
-  MirrorShader(const Scene &scene, int maxDepth = 5)
-    : Shader(scene, ShaderType::MIRROR, vec3(0.5f, 0.7f, 1.0f), true, maxDepth) {}// sky blue background
+  MirrorShader(const Scene &scene, int maxDepth = 5, int numThreads = 0)
+    : Shader(scene, ShaderType::MIRROR, vec3(0.5f, 0.7f, 1.0f), true, maxDepth, numThreads) {}// sky blue background
 };
 
 #endif// SHADER_H
