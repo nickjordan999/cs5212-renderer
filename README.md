@@ -19,6 +19,8 @@ This is a simple ray tracer that supports:
 
 ## Gallery
 
+![Blinn-Phong Spiral](renderings/spiral_blinn_phong.png)
+
 ![Mirror animation](renderings/mirror.gif)
 
 ## Building the Project
