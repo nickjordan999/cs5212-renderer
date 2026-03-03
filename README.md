@@ -8,9 +8,10 @@ This is a simple ray tracer that supports:
 - Sphere, Triangle, and Plane primitives
 - Multiple shader implementations:
   - Simple (flat material colors)
-  - Diffuse (Lambertian shading with ambient light)
-  - Blinn-Phong (diffuse + specular highlights)
+  - Direct Lambertian shading with ambient light
   - Normal (surface normal visualization)
+  - Blinn-Phong (diffuse + specular highlights)
+  - Stochastic diffuse with diffuse Interreflection
   - Mirror (recursive reflections)
 - Per-object shader overrides
 - Jittered anti-aliasing
@@ -19,9 +20,57 @@ This is a simple ray tracer that supports:
 
 ## Gallery
 
+---
+
+```sh
+raytracer -p random_spheres -s diffuse -w 800 -h 600 --rays-per-pixel 128 --shadows on --reflect-depth 3 --scene-param number_spheres=45 > diffuse1.png
+```
+
+
+![Random Spheres Diffuse Interreflection](renderings/diffuse.png)
+
+---
+
+
+```sh
+raytracer -p platonic -s diffuse --rays-per-pixel 128 -w 1500 -h 600 > platonic.png
+```
+
+
+![Platonic Diffuse](renderings/platonic.png)
+
+---
+
+```sh
+raytracer --width 600 --height 600 -p spiral -s blinnphong -a on --scene-param spiral_turns=55 --scene-param num_spheres=100 --scene-param t=0.15 --scene-param hue_shift=270 --rays-per-pixel 10 > spiral_blinn_phong.png
+```
+
 ![Blinn-Phong Spiral](renderings/spiral_blinn_phong.png)
 
+---
+
+```sh
+raytracer -w 600 -h 600 --shader blinnphong -p trilist --datafile data/trilist.dat --anti-aliasing off --threads 12 > img/trilist.png && imv img/trilist.png
+```
+
+![Bunny](renderings/trilist.png)
+
+---
+
+
+```sh
+./render_movie.sh --param mirror_sphere_height --min 2.0 --max 8.0 --frames 120 --preset mixed_shader --shader blinnphong --width 400 --height 400 --fps 30 --aa on --output mirror.gif
+```
+
 ![Mirror animation](renderings/mirror.gif)
+
+---
+
+```sh
+./render_movie.sh --param t --min 0.0 --max 1.0 --frames 120 --preset shadow_demo --shader diffuse --width 600 --height 600 --fps 30 --output shadow.gif -- --rays-per-pixel 128
+```
+
+![Shadow Demo animation](renderings/shadow.gif)
 
 ## Building the Project
 
@@ -40,8 +89,8 @@ cmake -B buildVCPkg -S . \
 
 # Build
 cmake --build buildVCPkg
-```
 
+```
 The raytracer binary will be at `buildVCPkg/src/raytracer`.
 
 ## Running Tests

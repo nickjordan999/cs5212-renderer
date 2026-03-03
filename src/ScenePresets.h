@@ -404,10 +404,10 @@ public:
 
     // Camera: pulled back and elevated to see all five solids
     scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
-      vec3(0.0f, 4.0f, 0.0f), vec3(0.0f, -0.35f, -1.0f), 1.0f));
+      vec3(0.0f, 4.0f, 0.0f), vec3(0.0f, -0.35f, -1.0f), 2.0f));
 
     // Lights
-    scene.addLight(Light(vec3(5.0f, 10.0f, 5.0f), vec3(1.0f, 1.0f, 1.0f)));
+    scene.addLight(Light(vec3(5.0f, 10.0f, 5.0f), vec3(0.5f, 0.5f, 0.5f)));
     scene.addLight(Light(vec3(-8.0f, 8.0f, -20.0f), vec3(0.7f, 0.7f, 0.7f)));
 
     return scene;
@@ -450,28 +450,45 @@ public:
     return scene;
   }
 
-  // A single sphere sitting on a checkerboard plane, lit by three light sources
+  // A single sphere sitting on a plane, lit by three light sources
   // from different positions so each casts a distinct shadow onto the plane.
-  static Scene createShadowDemoScene()
+  static Scene createShadowDemoScene(const SceneParams &params = {})
   {
     Scene scene;
 
-    // Checkerboard floor — high contrast so shadows are clearly visible
-    Material floorLight(vec3(0.85f, 0.85f, 0.85f));
-    Material floorDark(vec3(0.2f, 0.2f, 0.2f));
-    scene.addPlane(Plane(vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f), floorLight, floorDark, 2.0f));
+    const float t = params.count("t") ? params.at("t") : 1.0f;
 
-    // Orange sphere sitting on the plane (center at y = radius = 1)
-    scene.addSphere(Sphere(vec3(0.0f, 1.0f, -5.0f), 1.0f, Material(vec3(0.9f, 0.5f, 0.1f))));
+    float s0, s1, s2;
+
+    // Compute light intensity scalars
+    if (t <= 0.333f) {
+      s0 = 3 * t;
+      s1 = 0;
+      s2 = 0;
+    } else if (t > 0.333f and t <= 0.666f) {
+      s0 = 1;
+      s1 = 3 * (t - 0.333f);
+      s2 = 0;
+    } else {
+      s0 = 1;
+      s1 = 1;
+      s2 = 3 * (t - 0.666f);
+    }
+
+    Material floorLight(vec3(0.85f, 0.85f, 0.85f));
+    scene.addPlane(Plane(vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f), floorLight));
+
+    // Blue sphere sitting on the plane (center at y = radius = 1)
+    scene.addSphere(Sphere(vec3(0.0f, 1.0f, -5.0f), 1.0f, Material(vec3(0.0f, 0.0f, 1.0f))));
 
     // Camera angled down to see both the sphere and the shadows spreading on the floor
     scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
-      vec3(0.0f, 5.0f, 2.0f), vec3(0.0f, -0.5f, -1.0f), 2.0f));
+      vec3(0.0f, 5.0f, 2.0f), vec3(0.0f, -0.6f, -1.0f), 2.5f));
 
     // Three lights at different azimuths — each casts a shadow in a different direction
-    scene.addLight(Light(vec3(-5.0f, 6.0f, -2.0f), vec3(1.0f, 0.85f, 0.7f)));// left-front, warm
-    scene.addLight(Light(vec3(5.0f, 6.0f, -2.0f), vec3(0.7f, 0.85f, 1.0f)));// right-front, cool
-    scene.addLight(Light(vec3(0.0f, 7.0f, -10.0f), vec3(0.8f, 1.0f, 0.8f)));// rear, neutral green-white
+    scene.addLight(Light(vec3(-5.0f, 6.0f, -2.0f), s0 * vec3(0.5f, 0.5f, 0.5f)));
+    scene.addLight(Light(vec3(5.0f, 6.0f, -2.0f), s1 * vec3(0.5f, 0.5f, 0.5f)));
+    scene.addLight(Light(vec3(0.0f, 7.0f, -10.0f), s2 * vec3(0.5f, 0.5f, 0.5f)));
 
     return scene;
   }
@@ -575,6 +592,7 @@ public:
   // Random spheres of varying size and hue sitting on a white plane.
   // Params:
   //   number_spheres — how many spheres to place (default 20)
+  //   seed           — random seed for reproducibility (default 42)
   static Scene createRandomSpheresScene(const SceneParams &params = {})
   {
     Scene scene;
@@ -582,6 +600,10 @@ public:
     const int numSpheres = params.count("number_spheres")
                              ? static_cast<int>(params.at("number_spheres"))
                              : 20;
+
+    const uint32_t seed = params.count("seed")
+                            ? static_cast<uint32_t>(params.at("seed"))
+                            : 42;
 
     // White floor
     Material floorWhite(vec3(0.95f, 0.95f, 0.95f));
@@ -591,8 +613,8 @@ public:
     Material wallWhite(vec3(0.90f, 0.90f, 0.90f));
     scene.addPlane(Plane(vec3(0.0f, 0.0f, -13.0f), vec3(0.0f, 0.0f, 1.0f), wallWhite));
 
-    // RNG with fixed seed for reproducibility
-    std::mt19937 rng(42);
+    // RNG with configurable seed for reproducibility
+    std::mt19937 rng(seed);
     std::uniform_real_distribution<float> radiusDist(0.3f, 1.0f);
     std::uniform_real_distribution<float> hueDist(0.0f, 360.0f);
     std::uniform_real_distribution<float> posDist(-8.0f, 8.0f);
@@ -642,7 +664,7 @@ public:
 
     // Camera and lights copied from shadow demo
     scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
-      vec3(-2.0f, 5.0f, 2.0f), vec3(.1f, -0.5f, -1.0f), 1.5f));
+      vec3(-2.0f, 5.0f, 2.0f), vec3(.1f, -0.5f, -1.0f), 1.75f));
 
     scene.addLight(Light(vec3(-5.0f, 6.0f, -2.0f), vec3(0.1f, 0.1f, 0.1f)));
     scene.addLight(Light(vec3(5.0f, 6.0f, -2.0f), vec3(0.3f, 0.3f, 0.3f)));
