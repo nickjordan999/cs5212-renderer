@@ -68,19 +68,9 @@ int main(void)
     glfwGetFramebufferSize(window, &fb_width, &fb_height);
     glViewport(0, 0, fb_width, fb_height);
 
-    // Need to set a projection matrix that fits the aspect ratio set
-    // by the window frame.
-    //
-    // The ortho parameters, in order: left, right, bottom, top, zNear, zFar
-    float halfWidth = 15.0 / 2.0;
-    float halfHeight = halfWidth / aspectRatio;
-    glm::mat4 projectionMatrix = glm::ortho(-halfWidth, halfWidth, -halfHeight, halfHeight, -10.0f, 10.0f);
-
     GLint major_version;
     glGetIntegerv(GL_MAJOR_VERSION, &major_version);
     std::cout << "GL_MAJOR_VERSION: " << major_version << std::endl;
-
-    double timeDiff = 0.0, startFrameTime = 0.0, endFrameTime = 0.0;
 
     GLuint m_triangleVBO[2];
     GLuint m_VAO;
@@ -91,9 +81,9 @@ int main(void)
 
     // this is the actual triangle data that will be copied to
     // the GPU memory
-    std::vector< float > host_VertexBuffer{ -0.5f, -0.5f, 0.0f,    // V0
-                                            0.5f, -0.5f, 0.0f,    // V1
-                                            0.0f, 0.5f, 0.0f };   // V2
+    std::vector< float > host_VertexBuffer{ -3.0f, -3.0f, 0.0f,    // V0
+                                            3.0f, -3.0f, 0.0f,    // V1
+                                            0.0f, 3.0f, 0.0f };   // V2
 
     int numBytes = host_VertexBuffer.size() * sizeof(float);
 
@@ -136,9 +126,33 @@ int main(void)
 
     // Create a shader using my GLSLObject class                                                            
     sivelab::GLSLObject shader;
-    shader.addShader( "vertexShader_passthrough.glsl", sivelab::GLSLObject::VERTEX_SHADER );
+    shader.addShader( "vertexShader_withMatrixTransformation.glsl", sivelab::GLSLObject::VERTEX_SHADER );
     shader.addShader( "fragmentShader_passthrough.glsl", sivelab::GLSLObject::FRAGMENT_SHADER );
     shader.createProgram();
+
+    GLuint projMatrixID, viewMatrixID;
+    projMatrixID = shader.createUniform( "projMatrix" );
+    viewMatrixID = shader.createUniform( "viewMatrix" );
+
+    // The ortho parameters, in order: left, right, bottom, top, zNear, zFar
+    float halfWidth = 15.0 / 2.0;
+    float halfHeight = halfWidth;
+
+    float left = -halfWidth;
+    float right = halfWidth;
+
+    float bottom = -halfHeight;
+    float top = halfHeight;
+
+    float near = 5.0f;
+    float far = -5.0f;
+
+    glm::mat4 M_ortho = glm::ortho(-halfWidth, halfWidth, -halfHeight, halfHeight, near, far);
+
+    glm::vec3 m_pos(0,0,0), m_viewDir(0,0,-1);
+    glm::vec3 m_U(1,0,0), m_V(0,1,0), m_W(0,0,1);
+
+    double timeDiff = 0.0, startFrameTime = 0.0, endFrameTime = 0.0;
 
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
@@ -151,11 +165,20 @@ int main(void)
         // background color)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        // create the view matrix from our camera data                                                                                                   
+        glm::mat4 M_view = glm::lookAt( m_pos, m_pos - m_W, m_V );
+
         /* Render your objects here */
         shader.activate();
+
+        // copy from the host to the device the view matrix and the projection matrix                                                                                       
+        glUniformMatrix4fv(projMatrixID, 1, GL_FALSE, glm::value_ptr( M_ortho ));
+        glUniformMatrix4fv(viewMatrixID, 1, GL_FALSE, glm::value_ptr( M_view ));
+
         glBindVertexArray(m_VAO);
         glDrawArrays(GL_TRIANGLES, 0, 3);
         glBindVertexArray(0);
+
         shader.deactivate();
 
         // Swap the front and back buffers
@@ -163,6 +186,21 @@ int main(void)
 
         /* Poll for and process events */
         glfwPollEvents();
+
+        float moveRatePerFrame = 0.05;
+
+        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+          m_pos = m_pos + -m_W * moveRatePerFrame;
+        }
+        else if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+          m_pos = m_pos - m_U * moveRatePerFrame;
+        }
+        else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+          m_pos = m_pos + m_W * moveRatePerFrame;
+        }
+        else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+          m_pos = m_pos + m_U * moveRatePerFrame;
+        }
 
         if (glfwGetKey( window, GLFW_KEY_T ) == GLFW_PRESS) {
             std::cout << "fps: " << 1.0/timeDiff << std::endl;
