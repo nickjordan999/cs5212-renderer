@@ -11,6 +11,7 @@
 #include "glm/gtc/type_ptr.hpp"
 
 #include "GLSL.h"
+#include "Camera.h"
 
 int CheckGLErrors(const char *s)
 {
@@ -130,27 +131,27 @@ int main(void)
     shader.addShader( "fragmentShader_passthrough.glsl", sivelab::GLSLObject::FRAGMENT_SHADER );
     shader.createProgram();
 
-    GLuint projMatrixID, viewMatrixID;
+    GLuint projMatrixID, viewMatrixID, modelMatrixID;
     projMatrixID = shader.createUniform( "projMatrix" );
     viewMatrixID = shader.createUniform( "viewMatrix" );
+    modelMatrixID = shader.createUniform( "modelMatrix" );
 
-    // The ortho parameters, in order: left, right, bottom, top, zNear, zFar
-    float halfWidth = 15.0 / 2.0;
-    float halfHeight = halfWidth;
+    // Toggle: false = orthographic, true = perspective
+    bool usePerspective = true;
 
-    float left = -halfWidth;
-    float right = halfWidth;
+    OrthographicCamera orthoCam(
+        glm::vec3(0, 0, 0), glm::vec3(0, 0, -1), glm::vec3(0, 1, 0),
+        -7.5f, 7.5f, -7.5f, 7.5f, 5.0f, -5.0f);
 
-    float bottom = -halfHeight;
-    float top = halfHeight;
+    PerspectiveCamera perspCam(
+        glm::vec3(0, 0, 10), glm::vec3(0, 0, -1), glm::vec3(0, 1, 0),
+        glm::radians(45.0f), aspectRatio, 0.1f, 100.0f);
 
-    float near = 5.0f;
-    float far = -5.0f;
+    Camera *activeCamera = usePerspective ? (Camera *)&perspCam : (Camera *)&orthoCam;
 
-    glm::mat4 M_ortho = glm::ortho(-halfWidth, halfWidth, -halfHeight, halfHeight, near, far);
-
-    glm::vec3 m_pos(0,0,0), m_viewDir(0,0,-1);
-    glm::vec3 m_U(1,0,0), m_V(0,1,0), m_W(0,0,1);
+    // Model transform state
+    float modelRotation = 0.0f;  // radians around Z axis
+    float modelScale = 1.0f;
 
     double timeDiff = 0.0, startFrameTime = 0.0, endFrameTime = 0.0;
 
@@ -165,15 +166,19 @@ int main(void)
         // background color)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // create the view matrix from our camera data                                                                                                   
-        glm::mat4 M_view = glm::lookAt( m_pos, m_pos - m_W, m_V );
+        glm::mat4 M_view = activeCamera->viewMatrix();
+        glm::mat4 M_proj = activeCamera->projectionMatrix();
 
         /* Render your objects here */
         shader.activate();
 
-        // copy from the host to the device the view matrix and the projection matrix                                                                                       
-        glUniformMatrix4fv(projMatrixID, 1, GL_FALSE, glm::value_ptr( M_ortho ));
+        // Build model matrix: scale then rotate around Z
+        glm::mat4 M_model = glm::rotate(glm::mat4(1.0f), modelRotation, glm::vec3(0.0f, 0.0f, 1.0f));
+        M_model = glm::scale(M_model, glm::vec3(modelScale));
+
+        glUniformMatrix4fv(projMatrixID, 1, GL_FALSE, glm::value_ptr( M_proj ));
         glUniformMatrix4fv(viewMatrixID, 1, GL_FALSE, glm::value_ptr( M_view ));
+        glUniformMatrix4fv(modelMatrixID, 1, GL_FALSE, glm::value_ptr( M_model ));
 
         glBindVertexArray(m_VAO);
         glDrawArrays(GL_TRIANGLES, 0, 3);
@@ -188,18 +193,41 @@ int main(void)
         glfwPollEvents();
 
         float moveRatePerFrame = 0.05;
+        glm::vec3 camPos = activeCamera->position();
+        glm::vec3 camFwd = activeCamera->forward();
+        glm::vec3 camRight = glm::normalize(glm::cross(camFwd, activeCamera->up()));
 
         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-          m_pos = m_pos + -m_W * moveRatePerFrame;
+          camPos += camFwd * moveRatePerFrame;
         }
         else if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-          m_pos = m_pos - m_U * moveRatePerFrame;
+          camPos -= camRight * moveRatePerFrame;
         }
         else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-          m_pos = m_pos + m_W * moveRatePerFrame;
+          camPos -= camFwd * moveRatePerFrame;
         }
         else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-          m_pos = m_pos + m_U * moveRatePerFrame;
+          camPos += camRight * moveRatePerFrame;
+        }
+        activeCamera->setPosition(camPos);
+
+        // Model rotation: J = CCW, K = CW
+        float rotateRate = 1.0f;  // radians per second
+        if (glfwGetKey(window, GLFW_KEY_J) == GLFW_PRESS) {
+            modelRotation += rotateRate * (float)timeDiff;
+        }
+        if (glfwGetKey(window, GLFW_KEY_K) == GLFW_PRESS) {
+            modelRotation -= rotateRate * (float)timeDiff;
+        }
+
+        // Model scale: N = scale down, M = scale up
+        float scaleRate = 1.0f;  // per second
+        if (glfwGetKey(window, GLFW_KEY_N) == GLFW_PRESS) {
+            modelScale -= scaleRate * (float)timeDiff;
+            if (modelScale < 0.1f) modelScale = 0.1f;
+        }
+        if (glfwGetKey(window, GLFW_KEY_M) == GLFW_PRESS) {
+            modelScale += scaleRate * (float)timeDiff;
         }
 
         if (glfwGetKey( window, GLFW_KEY_T ) == GLFW_PRESS) {

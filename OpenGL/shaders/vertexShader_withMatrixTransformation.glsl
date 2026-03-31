@@ -5,11 +5,12 @@ layout(location=1) in vec3 in_Color;
 
 uniform mat4 projMatrix;
 uniform mat4 viewMatrix;
+uniform mat4 modelMatrix;
 
 out vec3 vertexColor;
 
 void main(void)
 {
   vertexColor = in_Color;
-  gl_Position = projMatrix * viewMatrix * vec4(in_Position, 1.0);
+  gl_Position = projMatrix * viewMatrix * modelMatrix * vec4(in_Position, 1.0);
 }
