@@ -98,14 +98,14 @@ int main(void)
 
     // Create color buffer and upload color data
     glBindBuffer(GL_ARRAY_BUFFER, m_triangleVBO[1]);
-    std::vector< float > host_ColorBuffer{ 0.5f, 0.0f, 0.5f,    // V0 - Purple
-                                           0.0f, 1.0f, 0.0f,    // V1 - Green
-                                           0.0f, 0.0f, 1.0f };   // V2 - Blue
+    std::vector< float > host_NormalBuffer{ 0.0f, 0.0f, 1.0f,
+                                           0.0f, 0.0f, 1.0f,
+                                           0.0f, 0.0f, 1.0f };
 
-    int colorNumBytes = host_ColorBuffer.size() * sizeof(float);
-    glBufferData(GL_ARRAY_BUFFER, colorNumBytes, host_ColorBuffer.data(), GL_STATIC_DRAW);
+    int normalNumBytes = host_NormalBuffer.size() * sizeof(float);
+    glBufferData(GL_ARRAY_BUFFER, normalNumBytes, host_NormalBuffer.data(), GL_STATIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
-    host_ColorBuffer.clear();
+    host_NormalBuffer.clear();
 
     // create a vertex array object that will map the attributes in
     // our vertex buffer to different location attributes for our
@@ -127,14 +127,16 @@ int main(void)
 
     // Create a shader using my GLSLObject class                                                            
     sivelab::GLSLObject shader;
-    shader.addShader( "vertexShader_withMatrixTransformation.glsl", sivelab::GLSLObject::VERTEX_SHADER );
-    shader.addShader( "fragmentShader_passthrough.glsl", sivelab::GLSLObject::FRAGMENT_SHADER );
+    shader.addShader( "vertexShader_PrepForPerFragment.glsl", sivelab::GLSLObject::VERTEX_SHADER );
+    shader.addShader( "fragmentShader_PrepForPerFragment.glsl", sivelab::GLSLObject::FRAGMENT_SHADER );
     shader.createProgram();
 
-    GLuint projMatrixID, viewMatrixID, modelMatrixID;
+    GLuint projMatrixID, viewMatrixID, modelMatrixID, normalMatrixID, lightPosWorldID;
     projMatrixID = shader.createUniform( "projMatrix" );
     viewMatrixID = shader.createUniform( "viewMatrix" );
     modelMatrixID = shader.createUniform( "modelMatrix" );
+    normalMatrixID = shader.createUniform( "normalMatrix");
+    lightPosWorldID = shader.createUniform( "lightPosWorld" );
 
     // Toggle: false = orthographic, true = perspective
     bool usePerspective = true;
@@ -176,9 +178,16 @@ int main(void)
         glm::mat4 M_model = glm::rotate(glm::mat4(1.0f), modelRotation, glm::vec3(0.0f, 0.0f, 1.0f));
         M_model = glm::scale(M_model, glm::vec3(modelScale));
 
+        glm::mat4 M_normal = glm::transpose(glm::inverse(M_model));
+
         glUniformMatrix4fv(projMatrixID, 1, GL_FALSE, glm::value_ptr( M_proj ));
         glUniformMatrix4fv(viewMatrixID, 1, GL_FALSE, glm::value_ptr( M_view ));
         glUniformMatrix4fv(modelMatrixID, 1, GL_FALSE, glm::value_ptr( M_model ));
+        glUniformMatrix4fv(normalMatrixID, 1, GL_FALSE, glm::value_ptr( M_normal ));
+
+        glm::vec4 lightPosWorld(0.0f, 0.0f, 0.0f, 1.0f);
+
+        glUniform4fv(lightPosWorldID, 1, glm::value_ptr(lightPosWorld));
 
         glBindVertexArray(m_VAO);
         glDrawArrays(GL_TRIANGLES, 0, 3);
@@ -190,6 +199,7 @@ int main(void)
         glfwSwapBuffers(window);
 
         /* Poll for and process events */
+
         glfwPollEvents();
 
         float moveRatePerFrame = 0.05;
