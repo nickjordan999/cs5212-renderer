@@ -77,8 +77,9 @@ public:
         // Calculate hit information
         vec3 point = ray.at(t);
         vec3 normal = (point - center).normalized();
+        bool is_front_face = ray.getDirection().dot(normal) < 0.0f;
 
-        return HitRecord{t, point, normal, material};
+        return HitRecord{t, point, normal, material, is_front_face};
     }
 
 private:

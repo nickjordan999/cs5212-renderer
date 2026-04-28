@@ -2,6 +2,9 @@ add_library (cs4212-util
   Camera.cpp
   FrameBuffer.cpp FrameBuffer.h
   Shader.cpp Shader.h
+  CausticsMap.cpp CausticsMap.h
+  Optics.h
+  PerlinNoise.h
   vec.h
 )
 target_compile_definitions(cs4212-util PUBLIC HAS_GLM)

@@ -85,7 +85,9 @@ public:
             }
         }
 
-        return HitRecord{t, hit_point, outward_normal, hit_mat};
+        // Plane is double-sided and we already flipped to face the ray, so this is always
+        // a "front face" hit by construction.
+        return HitRecord{t, hit_point, outward_normal, hit_mat, true};
     }
 
 private:

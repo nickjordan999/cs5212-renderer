@@ -7,6 +7,8 @@
 #include "Material.h"
 #include "vec.h"
 
+class CausticsMap;  // forward-declared
+
 // Base shader class.  The shading algorithm is determined by defaultShaderType;
 // per-object overrides (material.shaderType) are always respected.
 class Shader
@@ -18,6 +20,16 @@ public:
   // raysPerPixel: number of rays per pixel for anti-aliasing
   void traceScene(FrameBuffer &fb, int raysPerPixel) const;
 
+  // Set or unset the caustics map. When set, DIFFUSE/PATH_DIFFUSE materials with
+  // is_caustic_receiver=true will add the map's radiance estimate.
+  void setCausticsMap(const CausticsMap *map) { causticsMap = map; }
+
+  // Run a forward photon-tracing pass: emit `numPhotons` from the (single) point
+  // light in the scene, refract them through dielectric surfaces, and deposit
+  // those that have undergone at least one specular interaction onto the map.
+  // `maxBounces` caps the depth of any individual photon path.
+  void buildCausticsMap(CausticsMap &map, int numPhotons, int maxBounces = 8) const;
+
 protected:
   Shader(const Scene &scene, ShaderType defaultShaderType,
          const vec3 &defaultBackground, bool shadows = true, int maxDepth = 5,
@@ -27,7 +39,8 @@ protected:
       shadows(shadows),
       defaultShaderType(defaultShaderType),
       maxDepth(maxDepth),
-      numThreads(numThreads) {}
+      numThreads(numThreads),
+      causticsMap(nullptr) {}
 
   const Scene &scene;
   vec3 background;
@@ -37,6 +50,7 @@ private:
   ShaderType defaultShaderType;
   int maxDepth;
   int numThreads;
+  const CausticsMap *causticsMap;
 
   vec3 shadeRay(const Ray &ray) const;
   vec3 shadeRay(const Ray &ray, int depth) const;

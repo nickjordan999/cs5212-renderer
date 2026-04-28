@@ -9,6 +9,7 @@
 #include "Plane.h"
 #include "Light.h"
 #include "Material.h"
+#include "PerlinNoise.h"
 #include "vec.h"
 #include <memory>
 #include <random>
@@ -726,6 +727,140 @@ public:
     // Lights above and to the sides
     scene.addLight(Light(center + vec3(maxExtent, maxExtent, maxExtent), vec3(1.0f, 1.0f, 1.0f)));
     scene.addLight(Light(center + vec3(-maxExtent, maxExtent * 0.5f, maxExtent), vec3(0.5f, 0.5f, 0.5f)));
+
+    return scene;
+  }
+
+  // Fresnel + caustics demo scene.
+  // Z-up convention: light high on +Z, water surface centered on the XY-plane with
+  // Perlin-noise displacement in Z, matte floor far below on -Z. Camera in upper +Z
+  // pointing toward the floor. Photons traced from the light, refracted through
+  // the water, accumulate as caustics on the floor.
+  //
+  // Params:
+  //   light_height       — z position of the point light (default 8.0)
+  //   light_intensity    — scalar brightness (default 50.0; high because most flux refracts)
+  //   water_size         — full extent of the water surface in X and Y (default 8.0)
+  //   water_resolution   — grid divisions per side; produces 2*N^2 triangles (default 64)
+  //   water_amplitude    — Perlin Z displacement amplitude (default 0.15)
+  //   water_frequency    — Perlin sampling frequency (default 1.5)
+  //   water_z            — base z height of the water (default 0.0)
+  //   floor_z            — z height of the matte floor (default -5.0)
+  //   seed               — Perlin seed (default 42)
+  //   cam_height         — z position of the camera (default 6.0)
+  //   cam_back           — y offset of the camera (default 3.0; positions the camera back along -Y)
+  //   ball_height        — z position of the submerged diffuse ball's center (default -1.0; below water_z)
+  //   ball_radius        — radius of the diffuse ball (default 0.8)
+  //   ball_color_r/g/b   — RGB color of the diffuse ball (defaults: 1.0, 0.45, 0.15 — warm orange)
+  static Scene createFresnelCausticScene(const SceneParams &params = {})
+  {
+    auto P = [&](const std::string &k, float def) {
+      auto it = params.find(k);
+      return it == params.end() ? def : it->second;
+    };
+
+    Scene scene;
+
+    const float light_height    = P("light_height", 8.0f);
+    const float light_intensity = P("light_intensity", 50.0f);
+    const float water_size      = P("water_size", 8.0f);
+    const int   N               = static_cast<int>(P("water_resolution", 64.0f));
+    const float water_amplitude = P("water_amplitude", 0.15f);
+    const float water_frequency = P("water_frequency", 1.5f);
+    const float water_z         = P("water_z", 0.0f);
+    const float floor_z         = P("floor_z", -5.0f);
+    const uint32_t seed         = static_cast<uint32_t>(P("seed", 42.0f));
+    const float cam_height      = P("cam_height", 6.0f);
+    const float cam_back        = P("cam_back", 3.0f);
+    const float ball_height     = P("ball_height", -1.0f);
+    const float ball_radius     = P("ball_radius", 0.8f);
+    const vec3  ball_color(P("ball_color_r", 1.0f),
+                           P("ball_color_g", 0.45f),
+                           P("ball_color_b", 0.15f));
+
+    // Background: dim sky so reflected component on the water reads as "darker" rather than zero.
+    scene.setBackgroundColor(vec3(0.02f, 0.04f, 0.08f));
+
+    // Point light high above the water.
+    scene.addLight(Light(vec3(0.0f, 0.0f, light_height),
+                         vec3(light_intensity, light_intensity, light_intensity)));
+
+    // Generate a Perlin-displaced height field on an (N+1) x (N+1) vertex grid.
+    PerlinNoise pn(seed);
+    const float half = water_size * 0.5f;
+    const float dx = water_size / static_cast<float>(N);
+    const float dy = water_size / static_cast<float>(N);
+
+    std::vector<std::vector<float>> heights(N + 1, std::vector<float>(N + 1, 0.0f));
+    for (int i = 0; i <= N; ++i) {
+      for (int j = 0; j <= N; ++j) {
+        float x = -half + dx * static_cast<float>(i);
+        float y = -half + dy * static_cast<float>(j);
+        heights[i][j] = water_z + water_amplitude *
+                        pn.noise2D(x * water_frequency, y * water_frequency);
+      }
+    }
+
+    // Vertex positions.
+    std::vector<std::vector<vec3>> verts(N + 1, std::vector<vec3>(N + 1));
+    for (int i = 0; i <= N; ++i) {
+      for (int j = 0; j <= N; ++j) {
+        float x = -half + dx * static_cast<float>(i);
+        float y = -half + dy * static_cast<float>(j);
+        verts[i][j] = vec3(x, y, heights[i][j]);
+      }
+    }
+
+    // Per-vertex normals from the analytical heightfield gradient: n = (-dh/dx, -dh/dy, 1).
+    std::vector<std::vector<vec3>> normals(N + 1, std::vector<vec3>(N + 1));
+    for (int i = 0; i <= N; ++i) {
+      for (int j = 0; j <= N; ++j) {
+        float dh_dx, dh_dy;
+        if (i == 0)        dh_dx = (heights[i + 1][j] - heights[i][j]) / dx;
+        else if (i == N)   dh_dx = (heights[i][j] - heights[i - 1][j]) / dx;
+        else               dh_dx = (heights[i + 1][j] - heights[i - 1][j]) / (2.0f * dx);
+        if (j == 0)        dh_dy = (heights[i][j + 1] - heights[i][j]) / dy;
+        else if (j == N)   dh_dy = (heights[i][j] - heights[i][j - 1]) / dy;
+        else               dh_dy = (heights[i][j + 1] - heights[i][j - 1]) / (2.0f * dy);
+        normals[i][j] = vec3(-dh_dx, -dh_dy, 1.0f).normalized();
+      }
+    }
+
+    // Build triangles. Winding (v0, v1, v2) such that face normal points +Z.
+    Material water = Material::Water();
+    for (int i = 0; i < N; ++i) {
+      for (int j = 0; j < N; ++j) {
+        // Triangle 1: (i,j) -> (i+1,j) -> (i+1,j+1)
+        scene.addTriangle(Triangle(
+          verts[i][j],   verts[i + 1][j],   verts[i + 1][j + 1],
+          normals[i][j], normals[i + 1][j], normals[i + 1][j + 1],
+          water));
+        // Triangle 2: (i,j) -> (i+1,j+1) -> (i,j+1)
+        scene.addTriangle(Triangle(
+          verts[i][j],   verts[i + 1][j + 1],   verts[i][j + 1],
+          normals[i][j], normals[i + 1][j + 1], normals[i][j + 1],
+          water));
+      }
+    }
+
+    // Matte floor at z = floor_z, normal +Z, marked as caustic receiver.
+    Material floor_mat(vec3(0.85f, 0.85f, 0.85f), ShaderType::DIFFUSE);
+    floor_mat.is_caustic_receiver = true;
+    scene.addPlane(Plane(vec3(0.0f, 0.0f, floor_z),
+                         vec3(0.0f, 0.0f, 1.0f),
+                         floor_mat));
+
+    // Submerged colored diffuse ball — also receives caustics so refracted
+    // light dapples its top surface the way it does the floor.
+    Material ball_mat(ball_color, ShaderType::DIFFUSE);
+    ball_mat.is_caustic_receiver = false;
+    scene.addSphere(Sphere(vec3(0.0f, 0.0f, ball_height), ball_radius, ball_mat));
+
+    // Camera: pulled back along -Y, elevated on +Z, looking toward origin/floor.
+    vec3 cam_pos(0.0f, -cam_back, cam_height);
+    vec3 cam_target(0.0f, 0.0f, floor_z * 0.5f);
+    vec3 cam_dir = (cam_target - cam_pos).normalized();
+    scene.setCamera(std::make_shared<PerspectiveBasicCamera>(cam_pos, cam_dir, 1.5f));
 
     return scene;
   }

@@ -7,6 +7,7 @@
 #include "Shader.h"
 #include "Sphere.h"
 #include "Light.h"
+#include "CausticsMap.h"
 #include <iostream>
 #include <fstream>
 #include <cstdio>
@@ -39,6 +40,7 @@ void printUsage(const std::string &programName, const po::options_description &d
   std::cerr << "  mixed_shader         - Three spheres each locked to a different shader (demo)" << std::endl;
   std::cerr << "  shadow_demo          - Single sphere on a checkerboard plane with three lights casting shadows" << std::endl;
   std::cerr << "  trilist              - Load triangles from a data file (requires --datafile)" << std::endl;
+  std::cerr << "  fresnel_caustic      - Perlin-noise water surface over a matte floor (use --photons for caustics)" << std::endl;
   std::cerr << std::endl;
   std::cerr << "Available Shaders:" << std::endl;
   std::cerr << "  render               - Renders scene with material colors (default)" << std::endl;
@@ -104,6 +106,8 @@ Scene loadScene(const std::string &preset_name, const SceneParams &params, const
     return ScenePresets::createHallOfMirrorsScene();
   } else if (preset_name == "random_spheres") {
     return ScenePresets::createRandomSpheresScene(params);
+  } else if (preset_name == "fresnel_caustic") {
+    return ScenePresets::createFresnelCausticScene(params);
   } else {
     std::cerr << "Unknown scene preset: " << preset_name << std::endl;
     throw std::invalid_argument("Invalid scene preset");
@@ -135,7 +139,7 @@ int main(int argc, char *argv[])
   try {
     // Define command-line options
     po::options_description desc("Allowed options");
-    desc.add_options()("help", "Show this help message")("anti-aliasing,a", po::value<std::string>()->default_value("on"), "Toggle anti-aliasing (on/off)")("rays-per-pixel", po::value<int>()->default_value(8), "Number of rays per pixel for anti-aliasing")("width,w", po::value<int>()->default_value(800), "Image width in pixels")("height,h", po::value<int>()->default_value(800), "Image height in pixels")("focal-length,l", po::value<float>()->default_value(1.0f), "Focal length to image plane")("scene-preset,p", po::value<std::string>()->default_value("test"), "Scene preset to use")("shader,s", po::value<std::string>()->default_value("render"), "Shader mode to use")("reflect-depth", po::value<int>()->default_value(5), "Maximum mirror reflection bounces (used by --shader mirror)")("shadows", po::value<std::string>()->default_value("on"), "Enable shadow casting (on/off)")("threads", po::value<int>()->default_value(0), "Number of rendering threads (0 = auto-detect)")("scene-param", po::value<std::vector<std::string>>()->composing(), "Scene parameter as key=value (e.g. t=0.5)")("datafile,d", po::value<std::string>()->default_value(""), "Path to triangle data file (used with -p trilist)");
+    desc.add_options()("help", "Show this help message")("anti-aliasing,a", po::value<std::string>()->default_value("on"), "Toggle anti-aliasing (on/off)")("rays-per-pixel", po::value<int>()->default_value(8), "Number of rays per pixel for anti-aliasing")("width,w", po::value<int>()->default_value(800), "Image width in pixels")("height,h", po::value<int>()->default_value(800), "Image height in pixels")("focal-length,l", po::value<float>()->default_value(1.0f), "Focal length to image plane")("scene-preset,p", po::value<std::string>()->default_value("test"), "Scene preset to use")("shader,s", po::value<std::string>()->default_value("render"), "Shader mode to use")("reflect-depth", po::value<int>()->default_value(5), "Maximum mirror reflection bounces (used by --shader mirror)")("shadows", po::value<std::string>()->default_value("on"), "Enable shadow casting (on/off)")("threads", po::value<int>()->default_value(0), "Number of rendering threads (0 = auto-detect)")("scene-param", po::value<std::vector<std::string>>()->composing(), "Scene parameter as key=value (e.g. t=0.5)")("datafile,d", po::value<std::string>()->default_value(""), "Path to triangle data file (used with -p trilist)")("photons", po::value<int>()->default_value(0), "Number of photons to emit for the caustics pre-pass (0 disables)")("caustic-grid", po::value<int>()->default_value(512), "Resolution per axis of the caustics accumulation grid")("caustic-extent", po::value<float>()->default_value(8.0f), "Half-extent of the caustics grid on the floor (world units)")("caustic-blur", po::value<int>()->default_value(0), "Box-blur radius applied to the caustics grid after photon emission");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -160,6 +164,10 @@ int main(int argc, char *argv[])
     bool shadows_enabled = (shadows_mode == "on" || shadows_mode == "true" || shadows_mode == "1");
     int num_threads = vm["threads"].as<int>();
     std::string datafile = vm["datafile"].as<std::string>();
+    int photon_count = vm["photons"].as<int>();
+    int caustic_grid = vm["caustic-grid"].as<int>();
+    float caustic_extent = vm["caustic-extent"].as<float>();
+    int caustic_blur = vm["caustic-blur"].as<int>();
 
     // Parse anti-aliasing mode
     bool anti_aliasing_enabled = false;
@@ -217,6 +225,30 @@ int main(int argc, char *argv[])
 
     // Create appropriate shader
     auto shader = createShader(shader_mode, scene, reflect_depth, shadows_enabled, num_threads);
+
+    // Optional caustics pre-pass: emit photons from the scene's lights, accumulate
+    // them on a 2D grid, then attach the grid to the shader so that diffuse hits on
+    // surfaces marked is_caustic_receiver pick up the radiance estimate.
+    std::unique_ptr<CausticsMap> caustics;
+    if (photon_count > 0) {
+      // Caustics grid is centered on the world origin's XY plane and lies along the
+      // X/Y world axes. The fresnel_caustic preset places its floor at the world's
+      // -Z below the origin, with the caustic-receiver flag set on that plane.
+      caustics = std::make_unique<CausticsMap>(
+        vec3(0.0f, 0.0f, 0.0f),  // origin (only the in-plane projection matters)
+        vec3(1.0f, 0.0f, 0.0f),  // u-axis along world +X
+        vec3(0.0f, 1.0f, 0.0f),  // v-axis along world +Y
+        caustic_extent, caustic_extent,
+        caustic_grid, caustic_grid);
+
+      std::cerr << "[caustics] emitting " << photon_count << " photons..." << std::endl;
+      shader->buildCausticsMap(*caustics, photon_count);
+      if (caustic_blur > 0) {
+        caustics->blur(caustic_blur);
+      }
+      shader->setCausticsMap(caustics.get());
+      std::cerr << "[caustics] pre-pass complete." << std::endl;
+    }
 
     // Create framebuffer and render
     FrameBuffer fb(width, height);
