@@ -139,7 +139,7 @@ int main(int argc, char *argv[])
   try {
     // Define command-line options
     po::options_description desc("Allowed options");
-    desc.add_options()("help", "Show this help message")("anti-aliasing,a", po::value<std::string>()->default_value("on"), "Toggle anti-aliasing (on/off)")("rays-per-pixel", po::value<int>()->default_value(8), "Number of rays per pixel for anti-aliasing")("width,w", po::value<int>()->default_value(800), "Image width in pixels")("height,h", po::value<int>()->default_value(800), "Image height in pixels")("focal-length,l", po::value<float>()->default_value(1.0f), "Focal length to image plane")("scene-preset,p", po::value<std::string>()->default_value("test"), "Scene preset to use")("shader,s", po::value<std::string>()->default_value("render"), "Shader mode to use")("reflect-depth", po::value<int>()->default_value(5), "Maximum mirror reflection bounces (used by --shader mirror)")("shadows", po::value<std::string>()->default_value("on"), "Enable shadow casting (on/off)")("threads", po::value<int>()->default_value(0), "Number of rendering threads (0 = auto-detect)")("scene-param", po::value<std::vector<std::string>>()->composing(), "Scene parameter as key=value (e.g. t=0.5)")("datafile,d", po::value<std::string>()->default_value(""), "Path to triangle data file (used with -p trilist)")("photons", po::value<int>()->default_value(0), "Number of photons to emit for the caustics pre-pass (0 disables)")("caustic-grid", po::value<int>()->default_value(512), "Resolution per axis of the caustics accumulation grid")("caustic-extent", po::value<float>()->default_value(8.0f), "Half-extent of the caustics grid on the floor (world units)")("caustic-blur", po::value<int>()->default_value(0), "Box-blur radius applied to the caustics grid after photon emission");
+    desc.add_options()("help", "Show this help message")("anti-aliasing,a", po::value<std::string>()->default_value("on"), "Toggle anti-aliasing (on/off)")("rays-per-pixel", po::value<int>()->default_value(8), "Number of rays per pixel for anti-aliasing")("width,w", po::value<int>()->default_value(800), "Image width in pixels")("height,h", po::value<int>()->default_value(800), "Image height in pixels")("focal-length,l", po::value<float>()->default_value(1.0f), "Focal length to image plane")("scene-preset,p", po::value<std::string>()->default_value("test"), "Scene preset to use")("shader,s", po::value<std::string>()->default_value("render"), "Shader mode to use")("reflect-depth", po::value<int>()->default_value(5), "Maximum mirror reflection bounces (used by --shader mirror)")("shadows", po::value<std::string>()->default_value("on"), "Enable shadow casting (on/off)")("threads", po::value<int>()->default_value(0), "Number of rendering threads (0 = auto-detect)")("scene-param", po::value<std::vector<std::string>>()->composing(), "Scene parameter as key=value (e.g. t=0.5)")("datafile,d", po::value<std::string>()->default_value(""), "Path to triangle data file (used with -p trilist)")("photons", po::value<int>()->default_value(0), "Number of photons to emit for the caustics pre-pass (0 disables)")("caustic-grid", po::value<int>()->default_value(512), "Resolution per axis of the caustics accumulation grid")("caustic-extent", po::value<float>()->default_value(8.0f), "Half-extent of the caustics grid on the floor (world units)")("caustic-blur", po::value<int>()->default_value(0), "Box-blur radius applied to the caustics grid after photon emission")("gamma,g", po::value<float>()->default_value(2.2f), "Display gamma for output encoding (output = pow(linear, 1/gamma); use 1.0 to disable)");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -168,6 +168,12 @@ int main(int argc, char *argv[])
     int caustic_grid = vm["caustic-grid"].as<int>();
     float caustic_extent = vm["caustic-extent"].as<float>();
     int caustic_blur = vm["caustic-blur"].as<int>();
+    float gamma = vm["gamma"].as<float>();
+
+    if (gamma <= 0.0f) {
+      std::cerr << "Error: --gamma must be positive" << std::endl;
+      return 1;
+    }
 
     // Parse anti-aliasing mode
     bool anti_aliasing_enabled = false;
@@ -264,7 +270,7 @@ int main(int argc, char *argv[])
     close(tmpfd);
 
     try {
-      fb.writeToPng(tmpfile);
+      fb.writeToPng(tmpfile, gamma);
 
       std::ifstream infile(tmpfile, std::ios::binary);
       if (!infile) {

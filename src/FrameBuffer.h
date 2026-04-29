@@ -24,8 +24,9 @@ public:
 
     void setPixel(size_t x, size_t y, const vec3 &color);
 
-    // Write the frame buffer to a PNG file
-    void writeToPng(const std::string& filename) const;
+    // Write the frame buffer to a PNG file. Applies gamma correction with the
+    // given exponent (output = pow(linear, 1/gamma)). Pass 1.0 to disable.
+    void writeToPng(const std::string& filename, float gamma = 2.2f) const;
 
     // Get raw data (for writing to PNG later)
     const std::vector<vec3>& getData() const { return data; }
