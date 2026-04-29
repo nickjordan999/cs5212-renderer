@@ -17,13 +17,14 @@ include(Catch)
 # step, we iterate over all the elements within the ${UTESTS} set to
 # compile into an executable.
 # 
-set(UTESTS 
+set(UTESTS
   utest_Success
   utest_vec
   utest_FrameBuffer
   utest_Ray
   utest_Sphere
-  utest_Triangle)
+  utest_Triangle
+  utest_Optics)
 
 # 
 # For each of the executables named in ${UTESTS}, compile them into a
