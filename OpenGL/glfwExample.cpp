@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include <cmath>
 #include <iostream>
 #include <vector>
 
@@ -80,28 +81,52 @@ int main(void)
     glGenBuffers(2, m_triangleVBO);
     glBindBuffer(GL_ARRAY_BUFFER, m_triangleVBO[0]);
 
-    // this is the actual triangle data that will be copied to
-    // the GPU memory
-    std::vector< float > host_VertexBuffer{ -3.0f, -3.0f, 0.0f,    // V0
-                                            3.0f, -3.0f, 0.0f,    // V1
-                                            0.0f, 3.0f, 0.0f };   // V2
+    // Build an icosahedron (12 verts, 20 faces) with flat per-face normals.
+    const float phi = (1.0f + std::sqrt(5.0f)) / 2.0f;
+    std::vector<glm::vec3> icoVerts = {
+        {-1.0f,  phi,  0.0f}, { 1.0f,  phi,  0.0f},
+        {-1.0f, -phi,  0.0f}, { 1.0f, -phi,  0.0f},
+        { 0.0f, -1.0f,  phi}, { 0.0f,  1.0f,  phi},
+        { 0.0f, -1.0f, -phi}, { 0.0f,  1.0f, -phi},
+        { phi,  0.0f, -1.0f}, { phi,  0.0f,  1.0f},
+        {-phi,  0.0f, -1.0f}, {-phi,  0.0f,  1.0f}
+    };
+    for (auto &v : icoVerts) v = glm::normalize(v);
+
+    const int icoFaces[20][3] = {
+        {0,11,5}, {0,5,1},  {0,1,7},   {0,7,10}, {0,10,11},
+        {1,5,9},  {5,11,4}, {11,10,2}, {10,7,6}, {7,1,8},
+        {3,9,4},  {3,4,2},  {3,2,6},   {3,6,8},  {3,8,9},
+        {4,9,5},  {2,4,11}, {6,2,10},  {8,6,7},  {9,8,1}
+    };
+
+    const float icoScale = 3.0f;
+    std::vector<float> host_VertexBuffer;
+    std::vector<float> host_NormalBuffer;
+    host_VertexBuffer.reserve(20 * 3 * 3);
+    host_NormalBuffer.reserve(20 * 3 * 3);
+    for (int f = 0; f < 20; ++f) {
+        glm::vec3 a = icoVerts[icoFaces[f][0]] * icoScale;
+        glm::vec3 b = icoVerts[icoFaces[f][1]] * icoScale;
+        glm::vec3 c = icoVerts[icoFaces[f][2]] * icoScale;
+        glm::vec3 n = glm::normalize(glm::cross(b - a, c - a));
+        glm::vec3 tri[3] = { a, b, c };
+        for (int i = 0; i < 3; ++i) {
+            host_VertexBuffer.push_back(tri[i].x);
+            host_VertexBuffer.push_back(tri[i].y);
+            host_VertexBuffer.push_back(tri[i].z);
+            host_NormalBuffer.push_back(n.x);
+            host_NormalBuffer.push_back(n.y);
+            host_NormalBuffer.push_back(n.z);
+        }
+    }
 
     int numBytes = host_VertexBuffer.size() * sizeof(float);
-
-    // copy the numBytes from host_VertexBuffer t the GPU and store in
-    // the currently bound VBO
     glBufferData(GL_ARRAY_BUFFER, numBytes, host_VertexBuffer.data(), GL_STATIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    // once copied, we no longer need the data on the host
     host_VertexBuffer.clear();
 
-    // Create color buffer and upload color data
     glBindBuffer(GL_ARRAY_BUFFER, m_triangleVBO[1]);
-    std::vector< float > host_NormalBuffer{ 0.0f, 0.0f, 1.0f,
-                                           0.0f, 0.0f, 1.0f,
-                                           0.0f, 0.0f, 1.0f };
-
     int normalNumBytes = host_NormalBuffer.size() * sizeof(float);
     glBufferData(GL_ARRAY_BUFFER, normalNumBytes, host_NormalBuffer.data(), GL_STATIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -127,16 +152,22 @@ int main(void)
 
     // Create a shader using my GLSLObject class                                                            
     sivelab::GLSLObject shader;
-    shader.addShader( "vertexShader_PrepForPerFragment.glsl", sivelab::GLSLObject::VERTEX_SHADER );
-    shader.addShader( "fragmentShader_PrepForPerFragment.glsl", sivelab::GLSLObject::FRAGMENT_SHADER );
+    shader.addShader( "vertexShader_normal.glsl", sivelab::GLSLObject::VERTEX_SHADER );
+    shader.addShader( "fragmentShader_normal.glsl", sivelab::GLSLObject::FRAGMENT_SHADER );
     shader.createProgram();
 
     GLuint projMatrixID, viewMatrixID, modelMatrixID, normalMatrixID, lightPosWorldID;
+    GLuint diffuseComponentID, specularComponentID, ambientComponentID, shininessID, cameraPosWorldID;
     projMatrixID = shader.createUniform( "projMatrix" );
     viewMatrixID = shader.createUniform( "viewMatrix" );
     modelMatrixID = shader.createUniform( "modelMatrix" );
     normalMatrixID = shader.createUniform( "normalMatrix");
     lightPosWorldID = shader.createUniform( "lightPosWorld" );
+    diffuseComponentID = shader.createUniform( "diffuseComponent" );
+    specularComponentID = shader.createUniform( "specularComponent" );
+    ambientComponentID = shader.createUniform( "ambientComponent" );
+    shininessID = shader.createUniform( "shininess" );
+    cameraPosWorldID = shader.createUniform( "cameraPosWorld" );
 
     // Toggle: false = orthographic, true = perspective
     bool usePerspective = true;
@@ -152,7 +183,8 @@ int main(void)
     Camera *activeCamera = usePerspective ? (Camera *)&perspCam : (Camera *)&orthoCam;
 
     // Model transform state
-    float modelRotation = 0.0f;  // radians around Z axis
+    float modelRotation = 0.0f;   // radians around Z axis
+    float modelRotationX = 0.0f;  // radians around X axis
     float modelScale = 1.0f;
 
     double timeDiff = 0.0, startFrameTime = 0.0, endFrameTime = 0.0;
@@ -174,8 +206,9 @@ int main(void)
         /* Render your objects here */
         shader.activate();
 
-        // Build model matrix: scale then rotate around Z
+        // Build model matrix: scale, then rotate around X, then rotate around Z
         glm::mat4 M_model = glm::rotate(glm::mat4(1.0f), modelRotation, glm::vec3(0.0f, 0.0f, 1.0f));
+        M_model = glm::rotate(M_model, modelRotationX, glm::vec3(1.0f, 0.0f, 0.0f));
         M_model = glm::scale(M_model, glm::vec3(modelScale));
 
         glm::mat4 M_normal = glm::transpose(glm::inverse(M_model));
@@ -185,12 +218,24 @@ int main(void)
         glUniformMatrix4fv(modelMatrixID, 1, GL_FALSE, glm::value_ptr( M_model ));
         glUniformMatrix4fv(normalMatrixID, 1, GL_FALSE, glm::value_ptr( M_normal ));
 
-        glm::vec4 lightPosWorld(0.0f, 0.0f, 0.0f, 1.0f);
+        glm::vec4 lightPosWorld(0.0f, 0.0f, 5.0f, 1.0f);
 
         glUniform4fv(lightPosWorldID, 1, glm::value_ptr(lightPosWorld));
 
+        glm::vec3 diffuseComponent(1.0f, 0.0f, 0.0f);
+        glm::vec3 specularComponent(1.0f, 1.0f, 1.0f);
+        glm::vec3 ambientComponent(0.05f, 0.05f, 0.05f);
+        float shininess = 32.0f;
+        glm::vec3 cameraPosWorld = activeCamera->position();
+
+        glUniform3fv(diffuseComponentID, 1, glm::value_ptr(diffuseComponent));
+        glUniform3fv(specularComponentID, 1, glm::value_ptr(specularComponent));
+        glUniform3fv(ambientComponentID, 1, glm::value_ptr(ambientComponent));
+        glUniform1f(shininessID, shininess);
+        glUniform3fv(cameraPosWorldID, 1, glm::value_ptr(cameraPosWorld));
+
         glBindVertexArray(m_VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glDrawArrays(GL_TRIANGLES, 0, 60);
         glBindVertexArray(0);
 
         shader.deactivate();
@@ -221,13 +266,21 @@ int main(void)
         }
         activeCamera->setPosition(camPos);
 
-        // Model rotation: J = CCW, K = CW
+        // Model rotation: J = CCW around Z, K = CW around Z
         float rotateRate = 1.0f;  // radians per second
         if (glfwGetKey(window, GLFW_KEY_J) == GLFW_PRESS) {
             modelRotation += rotateRate * (float)timeDiff;
         }
         if (glfwGetKey(window, GLFW_KEY_K) == GLFW_PRESS) {
             modelRotation -= rotateRate * (float)timeDiff;
+        }
+
+        // Model rotation around X axis: I = CCW, O = CW
+        if (glfwGetKey(window, GLFW_KEY_I) == GLFW_PRESS) {
+            modelRotationX += rotateRate * (float)timeDiff;
+        }
+        if (glfwGetKey(window, GLFW_KEY_O) == GLFW_PRESS) {
+            modelRotationX -= rotateRate * (float)timeDiff;
         }
 
         // Model scale: N = scale down, M = scale up
