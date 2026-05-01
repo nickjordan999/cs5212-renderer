@@ -18,9 +18,11 @@ This is a simple ray tracer that supports:
 - Shadow casting
 - Animated movie rendering via parameter sweeps
 
+Also included is an **OpenGL renderer** (`openglRenderer`) that consumes the same `Scene` data structures and scene presets, but renders them through the GPU using rasterization. See [Using the OpenGL renderer](#using-the-opengl-renderer) below.
+
 ## Gallery
 
----
+### Raytracer Examples
 
 ```sh
 raytracer -p random_spheres -s diffuse -w 800 -h 600 --rays-per-pixel 128 --shadows on --reflect-depth 3 --scene-param number_spheres=45 > diffuse1.png
@@ -55,7 +57,7 @@ raytracer -w 600 -h 600 --shader blinnphong -p trilist --datafile data/trilist.d
 
 ![Bunny](renderings/trilist.png)
 
----
+### Raytracer Movie Examples
 
 
 ```sh
@@ -71,6 +73,28 @@ raytracer -w 600 -h 600 --shader blinnphong -p trilist --datafile data/trilist.d
 ```
 
 ![Shadow Demo animation](renderings/shadow.gif)
+
+### Open GL Renderer Examples
+
+The same scene presets and objects that are used in the raytracer can be rendered using openGL.  Here we render the same platonic scene as above but with BlinnPhong shading in the `openglRenderer`.
+
+```sh
+openGLRenderer -p platonic -s blinnphong -w 1500 -h 600
+```
+
+![Platonic GL](renderings/platonic-gl.png)
+
+
+---
+
+Flythrough of the spiral scene using interactive camera controls in the openglRenderer.  Spheres are shaded with Blinn-Phong and two lights are in the scene at either end of the spiral.
+
+```sh
+openGLRenderer -p spiral -s blinnphong --scene-param spiral_turns=110 --scene-param num_spheres=200 --scene-param t=0.5 --scene-param hue_shift=270
+```
+
+https://github.com/user-attachments/assets/54baecb0-f062-497b-8d84-823517937b26
+
 
 ## Building the Project
 
@@ -91,7 +115,9 @@ cmake -B buildVCPkg -S . \
 cmake --build buildVCPkg
 
 ```
-The raytracer binary will be at `buildVCPkg/src/raytracer`.
+The build produces two binaries:
+- `buildVCPkg/src/raytracer` — CPU raytracer, PNG output to stdout
+- `buildVCPkg/OpenGL/openglRenderer` — real-time OpenGL viewer (interactive window)
 
 ## Running Tests
 
@@ -225,6 +251,138 @@ Run `./buildVCPkg/src/raytracer --help` to see all options:
 | `--reflect-depth` | | 5 | Max mirror reflection bounces |
 | `--shadows` | | on | Enable shadow casting (on/off) |
 | `--scene-param` | | | Scene parameter as key=value |
+
+## Using the OpenGL renderer
+
+`openglRenderer` opens a GLFW window and renders the same scene presets as the raytracer, but in real time using OpenGL rasterization. The two binaries share `ScenePresets`, `Scene`, `Sphere`, `Triangle`, `Plane`, `Light`, and `Camera` — anything you can render with `raytracer -p <preset>` you can also render with `openglRenderer -p <preset>`.
+
+The trade-offs are very different from the CPU raytracer:
+- Real-time, interactive (fly around the scene with WASD + arrow keys)
+- Only the rasterization-friendly shading models (Simple / Normal / Lambertian / Blinn-Phong)
+- No path tracing, no recursive reflection / refraction, no shadows.
+
+Materials whose `ShaderType` the OpenGL renderer can't honor (`MIRROR`, `DIELECTRIC`, `PATH_DIFFUSE`) fall back to **Blinn-Phong** using the material's diffuse color, so a scene like `checkerboard` (which features a mirror sphere) still renders — the mirror just appears as a shiny ball.
+
+### Building
+
+`openglRenderer` is built by the same CMake configure/build as the raytracer. The binary lands at `buildVCPkg/OpenGL/openglRenderer`. Shaders are auto-copied from `OpenGL/shaders/*.glsl` into the binary's directory at build time, so it can be run directly without manual setup.
+
+```bash
+cmake --build buildVCPkg --target openglRenderer
+```
+
+### Basic usage
+
+```bash
+# Default: opens an 800x800 window rendering the 'test' preset with Blinn-Phong shading
+./buildVCPkg/OpenGL/openglRenderer
+
+# Specify scene + window size
+./buildVCPkg/OpenGL/openglRenderer -p platonic -w 1200 -h 700
+```
+
+### Selecting a scene preset
+
+Same `-p` flag and same names as the raytracer:
+
+```bash
+./buildVCPkg/OpenGL/openglRenderer -p platonic
+./buildVCPkg/OpenGL/openglRenderer -p pyramid
+./buildVCPkg/OpenGL/openglRenderer -p mixed_shader
+./buildVCPkg/OpenGL/openglRenderer -p spiral --scene-param num_spheres=200
+```
+
+### Selecting a shader
+
+The `-s` flag picks the **default** shader applied to objects whose material doesn't already specify one. Per-material overrides in scene presets (e.g. `mixed_shader`) still take precedence:
+
+```bash
+./buildVCPkg/OpenGL/openglRenderer -p platonic -s blinnphong   # default
+./buildVCPkg/OpenGL/openglRenderer -p platonic -s lambertian
+./buildVCPkg/OpenGL/openglRenderer -p platonic -s normalshader
+./buildVCPkg/OpenGL/openglRenderer -p platonic -s render        # flat color
+```
+
+The `mirror` and `diffuse` shader names from the raytracer are accepted but warn and fall back to `blinnphong`.
+
+### Camera controls (fly camera)
+
+The window opens with the camera placed by the scene preset; from there you can move freely:
+
+| Key | Action |
+|-----|--------|
+| `W` / `S` | fly forward / backward (camera-relative) |
+| `A` / `D` | strafe left / right |
+| `Space` / `LeftShift` | fly up / down (world-relative) |
+| `←` `→` | yaw left / right |
+| `↑` `↓` | pitch up / down |
+| `ESC` | quit |
+
+Default speeds: 5 units/sec translate, 90°/sec yaw, 60°/sec pitch.
+
+### Sphere fidelity
+
+Spheres are tessellated as **icospheres** (icosahedron with midpoint subdivision); the default subdivision level is 2 → 320 triangles per sphere. This is hard-coded in `OpenGL/GLSceneRenderer.cpp` (`kIcoSphereSubdivisions`).
+
+### Plane rendering
+
+`Plane`s are mathematically infinite; the OpenGL renderer draws each as a 100×100 quad oriented to the plane's normal at its `point`. Pattern selection (`SOLID` / `CHECKER` / `HEX`) is implemented in `fragmentShader_plane.glsl` using the same world-space math the raytracer uses, so the patterns line up identically with the raytracer at non-extreme camera distances. Far-away planes will visibly truncate at the 100-unit edge.
+
+### Lights
+
+The OpenGL shaders support up to **4 lights** as a per-fragment uniform array. Light intensity is honored (a `(0.5, 0.5, 0.5)` fill light contributes half as much as a `(1, 1, 1)` key light). All scene presets in this repo use 1–3 lights, so no preset hits the cap. To raise it, bump `kMaxLights` in `OpenGL/SceneBridge.h` and `MAX_LIGHTS` in the three lit fragment shaders to match.
+
+### Full options reference
+
+Run `./buildVCPkg/OpenGL/openglRenderer --help` to see all options:
+
+| Option | Short | Default | Description |
+|--------|-------|---------|-------------|
+| `--width` | `-w` | 800 | Window width in pixels |
+| `--height` | `-h` | 800 | Window height in pixels |
+| `--scene-preset` | `-p` | test | Scene preset name |
+| `--shader` | `-s` | blinnphong | Default shader: `render`, `normalshader`, `lambertian`, `blinnphong` |
+| `--scene-param` | | | Scene parameter as `key=value` (composable) |
+| `--datafile` | `-d` | | Path to triangle data file (used with `-p trilist`) |
+
+## Feature comparison: raytracer vs openglRenderer
+
+Both binaries operate on the same `Scene` data and accept the same `--scene-preset` / `--scene-param` / `-w` / `-h` / `-d` options.
+
+| Feature | `raytracer` (CPU) | `openglRenderer` (GPU) |
+|---|---|---|
+| **Output** | PNG to stdout | Live GLFW window |
+| **Speed** | Seconds–minutes per frame | Real time (60+ fps) |
+| **Interactivity** | None (offline) | Fly camera (WASD + arrows + Space/Shift) |
+| **Scene presets** | All | All (uses identical `ScenePresets::loadScene`) |
+| `render` (Simple) shader | ✔ | ✔ |
+| `normalshader` | ✔ | ✔ |
+| `lambertian` | ✔ | ✔ |
+| `blinnphong` | ✔ | ✔ |
+| `mirror` shader | ✔ recursive reflection | ✘ falls back to Blinn-Phong |
+| `diffuse` shader (path-traced indirect) | ✔ | ✘ falls back to Blinn-Phong |
+| Refraction / dielectrics | ✔ | ✘ falls back to Blinn-Phong |
+| Caustics (photon map) | ✔ via `--photons` | ✘ |
+| Shadow casting | ✔ via `--shadows on/off` | ✘ |
+| Anti-aliasing | ✔ jittered, `--rays-per-pixel` | ✘ (not supported) |
+| Gamma correction on output | ✔ via `--gamma` | ✘ (writes to default framebuffer) |
+| Per-object shader overrides | ✔ honored | ✔ honored (with fallbacks above) |
+| Multiple lights | ✔ unlimited | ✔ up to 4 (per-fragment uniform array) |
+| Plane primitive | ✔ infinite | ✔ rendered as 100×100 quad with procedural pattern |
+| Sphere primitive | ✔ analytic intersection | ✔ icosphere mesh (level-2 → 320 triangles) |
+| Triangle primitive | ✔ Möller-Trumbore | ✔ direct VBO upload |
+| Per-vertex normals (smooth shading) | ✔ | ✔ (via per-fragment lighting) |
+| Plane CHECKER / HEX patterns | ✔ | ✔ (procedural in fragment shader) |
+| Movie rendering (`render_movie.sh`) | ✔ | ✘ (interactive only) |
+| Background color from scene | ✔ | ✔ via `glClearColor` |
+| `is_caustic_receiver` flag | ✔ honored | ✘ ignored |
+
+If you want to compare a raytracer image against the OpenGL view of the same scene side-by-side:
+
+```bash
+./buildVCPkg/src/raytracer       -p platonic -s blinnphong > platonic_rt.png && imv platonic_rt.png &
+./buildVCPkg/OpenGL/openglRenderer -p platonic -s blinnphong &
+```
 
 ## Creating Movies
 

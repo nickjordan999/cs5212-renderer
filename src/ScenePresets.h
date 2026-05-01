@@ -156,6 +156,8 @@ public:
     const float spiralRadius = 5.0f;
     const float spiralTurns = params.count("spiral_turns") ? params.at("spiral_turns") : 75.0f;
 
+    scene.setBackgroundColor(vec3(0.0f, 0.0f, 0.0f));
+
     for (int i = 0; i < numSpheres; ++i) {
       // Position along z-axis
       float z = -i * spacing;
@@ -180,7 +182,8 @@ public:
     scene.setCamera(std::make_shared<PerspectiveBasicCamera>(
       vec3(0.0f, 0.0f, -t * totalZ), vec3(0.0f, 0.0f, -1.0f), 2.0f));
 
-    scene.addLight(Light(vec3(0.0f, 0.0f, -totalZ / 4.0f), vec3(1.0f, 1.0f, 1.0f)));
+    scene.addLight(Light(vec3(0.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, 1.0f)));
+    scene.addLight(Light(vec3(0.0f, 0.0f, -totalZ), vec3(1.0f, 1.0f, 1.0f)));
 
     return scene;
   }
@@ -905,7 +908,7 @@ public:
     // Submerged colored diffuse ball — also receives caustics so refracted
     // light dapples its top surface the way it does the floor.
     Material ball_mat(ball_color, ShaderType::DIFFUSE);
-    ball_mat.is_caustic_receiver = false;
+    ball_mat.is_caustic_receiver = true;
     scene.addSphere(Sphere(vec3(0.0f, 0.0f, ball_height), ball_radius, ball_mat));
 
     // Camera: pulled back along -Y, elevated on +Z, looking toward origin/floor.

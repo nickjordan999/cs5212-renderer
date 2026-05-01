@@ -178,6 +178,16 @@ int main(int argc, char *argv[])
           glm::radians(45.0f), aspect, 0.1f, 1000.0f);
     }
 
+    // Keep the GL viewport and camera aspect in sync with the window size.
+    glfwSetWindowUserPointer(window, camera.get());
+    glfwSetFramebufferSizeCallback(window,
+        [](GLFWwindow *win, int w, int h) {
+          if (w <= 0 || h <= 0) return;
+          glViewport(0, 0, w, h);
+          auto *cam = static_cast<GLPerspectiveCamera *>(glfwGetWindowUserPointer(win));
+          if (cam) cam->setAspectRatio(static_cast<float>(w) / static_cast<float>(h));
+        });
+
     // ---------- Frame loop ----------
     // Yaw/pitch derived from the seeded camera's forward, then accumulated from
     // arrow-key input. Pitch is clamped just under ±90° to prevent gimbal flip.
