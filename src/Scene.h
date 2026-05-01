@@ -187,6 +187,10 @@ public:
         return spheres.size() + triangles.size() + planes.size();
     }
 
+    const std::vector<Sphere>& getSpheres() const { return spheres; }
+    const std::vector<Triangle>& getTriangles() const { return triangles; }
+    const std::vector<Plane>& getPlanes() const { return planes; }
+
 private:
     std::vector<Sphere> spheres;
     std::vector<Triangle> triangles;

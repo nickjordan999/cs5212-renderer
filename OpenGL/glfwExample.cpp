@@ -172,15 +172,15 @@ int main(void)
     // Toggle: false = orthographic, true = perspective
     bool usePerspective = true;
 
-    OrthographicCamera orthoCam(
+    GLOrthographicCamera orthoCam(
         glm::vec3(0, 0, 0), glm::vec3(0, 0, -1), glm::vec3(0, 1, 0),
         -7.5f, 7.5f, -7.5f, 7.5f, 5.0f, -5.0f);
 
-    PerspectiveCamera perspCam(
+    GLPerspectiveCamera perspCam(
         glm::vec3(0, 0, 10), glm::vec3(0, 0, -1), glm::vec3(0, 1, 0),
         glm::radians(45.0f), aspectRatio, 0.1f, 100.0f);
 
-    Camera *activeCamera = usePerspective ? (Camera *)&perspCam : (Camera *)&orthoCam;
+    GLCamera *activeCamera = usePerspective ? (GLCamera *)&perspCam : (GLCamera *)&orthoCam;
 
     // Model transform state
     float modelRotation = 0.0f;   // radians around Z axis

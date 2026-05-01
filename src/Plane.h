@@ -90,6 +90,13 @@ public:
         return HitRecord{t, hit_point, outward_normal, hit_mat, true};
     }
 
+    const vec3& getPoint() const { return point; }
+    const vec3& getNormal() const { return normal; }
+    const Material& getMat1() const { return mat1; }
+    const Material& getMat2() const { return mat2; }
+    Pattern getPattern() const { return pattern; }
+    float getScale() const { return scale; }
+
 private:
     vec3 point;       // A point on the plane
     vec3 normal;      // Plane normal (stored normalized)

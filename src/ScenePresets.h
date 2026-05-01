@@ -731,6 +731,58 @@ public:
     return scene;
   }
 
+  // Dispatch a scene by preset name. Centralizes the string→factory mapping so
+  // both the raytracer and the OpenGL entry point can use the same names.
+  static Scene loadScene(const std::string &preset_name,
+                         const SceneParams &params = {},
+                         const std::string &datafile = "")
+  {
+    if (preset_name == "trilist") {
+      if (datafile.empty()) {
+        throw std::invalid_argument("The 'trilist' preset requires --datafile <path>");
+      }
+      return createTrilistScene(datafile);
+    } else if (preset_name == "test") {
+      return createTestScene();
+    } else if (preset_name == "lit_test") {
+      return createLitTestScene();
+    } else if (preset_name == "single_sphere") {
+      return createSingleSphereScene();
+    } else if (preset_name == "grid") {
+      return createGridScene();
+    } else if (preset_name == "aligned") {
+      return createAlignedSpheresScene();
+    } else if (preset_name == "spiral") {
+      return createSpiralSpheresScene(params);
+    } else if (preset_name == "pyramid") {
+      return createTrianglePyramidScene();
+    } else if (preset_name == "octahedron") {
+      return createOctahedronScene();
+    } else if (preset_name == "dodecahedron") {
+      return createDodecahedronScene();
+    } else if (preset_name == "checkerboard") {
+      return createCheckerboardScene();
+    } else if (preset_name == "hexboard") {
+      return createHexboardScene();
+    } else if (preset_name == "platonic") {
+      return createPlatonicSolidsScene();
+    } else if (preset_name == "triangle_test") {
+      return createTriangleTestScene();
+    } else if (preset_name == "mixed_shader") {
+      return createMixedShaderScene(params);
+    } else if (preset_name == "shadow_demo") {
+      return createShadowDemoScene(params);
+    } else if (preset_name == "hall_of_mirrors") {
+      return createHallOfMirrorsScene();
+    } else if (preset_name == "random_spheres") {
+      return createRandomSpheresScene(params);
+    } else if (preset_name == "fresnel_caustic") {
+      return createFresnelCausticScene(params);
+    } else {
+      throw std::invalid_argument("Unknown scene preset: " + preset_name);
+    }
+  }
+
   // Fresnel + caustics demo scene.
   // Z-up convention: light high on +Z, water surface centered on the XY-plane with
   // Perlin-noise displacement in Z, matte floor far below on -Z. Camera in upper +Z

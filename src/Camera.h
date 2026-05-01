@@ -80,6 +80,10 @@ public:
     return Ray(position, ray_direction);
   }
 
+  const vec3 &getPosition() const { return position; }
+  const vec3 &getDirection() const { return direction; }
+  float getFocalLength() const { return focal_length; }
+
 private:
   void setupCamera()
   {

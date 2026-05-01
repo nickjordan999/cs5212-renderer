@@ -64,54 +64,10 @@ void printUsage(const std::string &programName, const po::options_description &d
   std::cerr << "  " << programName << " -p trilist --datafile data/trilist.dat -s diffuse" << std::endl;
 }
 
-// Load a scene by preset name
+// Load a scene by preset name (delegates to ScenePresets::loadScene).
 Scene loadScene(const std::string &preset_name, const SceneParams &params, const std::string &datafile = "")
 {
-  if (preset_name == "trilist") {
-    if (datafile.empty()) {
-      throw std::invalid_argument("The 'trilist' preset requires --datafile <path>");
-    }
-    return ScenePresets::createTrilistScene(datafile);
-  } else if (preset_name == "test") {
-    return ScenePresets::createTestScene();
-  } else if (preset_name == "lit_test") {
-    return ScenePresets::createLitTestScene();
-  } else if (preset_name == "single_sphere") {
-    return ScenePresets::createSingleSphereScene();
-  } else if (preset_name == "grid") {
-    return ScenePresets::createGridScene();
-  } else if (preset_name == "aligned") {
-    return ScenePresets::createAlignedSpheresScene();
-  } else if (preset_name == "spiral") {
-    return ScenePresets::createSpiralSpheresScene(params);
-  } else if (preset_name == "pyramid") {
-    return ScenePresets::createTrianglePyramidScene();
-  } else if (preset_name == "octahedron") {
-    return ScenePresets::createOctahedronScene();
-  } else if (preset_name == "dodecahedron") {
-    return ScenePresets::createDodecahedronScene();
-  } else if (preset_name == "checkerboard") {
-    return ScenePresets::createCheckerboardScene();
-  } else if (preset_name == "hexboard") {
-    return ScenePresets::createHexboardScene();
-  } else if (preset_name == "platonic") {
-    return ScenePresets::createPlatonicSolidsScene();
-  } else if (preset_name == "triangle_test") {
-    return ScenePresets::createTriangleTestScene();
-  } else if (preset_name == "mixed_shader") {
-    return ScenePresets::createMixedShaderScene(params);
-  } else if (preset_name == "shadow_demo") {
-    return ScenePresets::createShadowDemoScene(params);
-  } else if (preset_name == "hall_of_mirrors") {
-    return ScenePresets::createHallOfMirrorsScene();
-  } else if (preset_name == "random_spheres") {
-    return ScenePresets::createRandomSpheresScene(params);
-  } else if (preset_name == "fresnel_caustic") {
-    return ScenePresets::createFresnelCausticScene(params);
-  } else {
-    std::cerr << "Unknown scene preset: " << preset_name << std::endl;
-    throw std::invalid_argument("Invalid scene preset");
-  }
+  return ScenePresets::loadScene(preset_name, params, datafile);
 }
 
 // Create a shader based on the rendering mode

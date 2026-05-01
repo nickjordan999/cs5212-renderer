@@ -6,16 +6,16 @@
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/type_ptr.hpp"
 
-class Camera
+class GLCamera
 {
 public:
-    Camera()
+    GLCamera()
         : m_position(0, 0, 0), m_up(0, 1, 0), m_forward(0, 0, -1) {}
 
-    Camera(const glm::vec3 &position, const glm::vec3 &forward, const glm::vec3 &up)
+    GLCamera(const glm::vec3 &position, const glm::vec3 &forward, const glm::vec3 &up)
         : m_position(position), m_up(up), m_forward(glm::normalize(forward)) {}
 
-    virtual ~Camera() {}
+    virtual ~GLCamera() {}
 
     void setPosition(const glm::vec3 &pos) { m_position = pos; }
     void setUp(const glm::vec3 &up) { m_up = up; }
@@ -38,17 +38,17 @@ protected:
     glm::vec3 m_forward;
 };
 
-class OrthographicCamera : public Camera
+class GLOrthographicCamera : public GLCamera
 {
 public:
-    OrthographicCamera()
-        : Camera(), m_left(-7.5f), m_right(7.5f), m_bottom(-7.5f), m_top(7.5f),
+    GLOrthographicCamera()
+        : GLCamera(), m_left(-7.5f), m_right(7.5f), m_bottom(-7.5f), m_top(7.5f),
           m_near(5.0f), m_far(-5.0f) {}
 
-    OrthographicCamera(const glm::vec3 &position, const glm::vec3 &forward, const glm::vec3 &up,
+    GLOrthographicCamera(const glm::vec3 &position, const glm::vec3 &forward, const glm::vec3 &up,
                        float left, float right, float bottom, float top,
                        float near, float far)
-        : Camera(position, forward, up),
+        : GLCamera(position, forward, up),
           m_left(left), m_right(right), m_bottom(bottom), m_top(top),
           m_near(near), m_far(far) {}
 
@@ -61,17 +61,17 @@ private:
     float m_left, m_right, m_bottom, m_top, m_near, m_far;
 };
 
-class PerspectiveCamera : public Camera
+class GLPerspectiveCamera : public GLCamera
 {
 public:
-    PerspectiveCamera()
-        : Camera(glm::vec3(0, 0, 10), glm::vec3(0, 0, -1), glm::vec3(0, 1, 0)),
+    GLPerspectiveCamera()
+        : GLCamera(glm::vec3(0, 0, 10), glm::vec3(0, 0, -1), glm::vec3(0, 1, 0)),
           m_fovY(glm::radians(45.0f)), m_aspectRatio(1.0f),
           m_near(0.1f), m_far(100.0f) {}
 
-    PerspectiveCamera(const glm::vec3 &position, const glm::vec3 &forward, const glm::vec3 &up,
+    GLPerspectiveCamera(const glm::vec3 &position, const glm::vec3 &forward, const glm::vec3 &up,
                       float fovYRadians, float aspectRatio, float near, float far)
-        : Camera(position, forward, up),
+        : GLCamera(position, forward, up),
           m_fovY(fovYRadians), m_aspectRatio(aspectRatio),
           m_near(near), m_far(far) {}
 
