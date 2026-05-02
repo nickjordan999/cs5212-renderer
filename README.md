@@ -25,6 +25,23 @@ Also included is an **OpenGL renderer** (`openglRenderer`) that consumes the sam
 ### Raytracer Examples
 
 ```sh
+raytracer -p fresnel_random_spheres --shader diffuse --width 3840 --height 2160 \
+  --rays-per-pixel 128 --shadows on --reflect-depth 3 \
+  --photons 10000000 --caustic-extent 24 --caustic-grid 8192 --caustic-blur 1 \
+  --scene-param number_spheres=30 --scene-param sphere_seed=43 \
+  --scene-param water_size=24 --scene-param water_resolution=512 \
+  --scene-param water_frequency=.75 --scene-param water_amplitude=0.3 \
+  --scene-param water_z=4.0 --scene-param floor_z=2.0 \
+  --scene-param cam_back=16.0 --scene-param cam_height=6.0 > out.png
+```
+
+![Fresnel Random Spheres Caustics](renderings/fresnel_caustic_final.png)
+
+See [FINAL.md](FINAL.md) for a full write-up of the Fresnel + photon-mapped-caustics scene.
+
+---
+
+```sh
 raytracer -p random_spheres -s diffuse -w 800 -h 600 --rays-per-pixel 128 --shadows on --reflect-depth 3 --scene-param number_spheres=45 > diffuse1.png
 ```
 

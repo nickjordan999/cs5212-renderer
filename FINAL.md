@@ -1,12 +1,87 @@
-# Fresnel Caustics — FresnelRandomSpheres Preset
+# Final Project: Fresnel + Caustics
 
-The `FresnelRandomSpheres` preset (in `src/ScenePresets.h`) composes four
-distinct rendering ideas into a single scene: a Perlin-noise displaced water
+The `FresnelRandomSpheres` preset (in `src/ScenePresets.h`) combines the following ideas
+into a single scene: a Perlin-noise displaced water
 surface, a collection of randomly-placed mirror and diffuse spheres half
 submerged in that water, a forward photon-mapping pass that produces caustics
 on the floor and on the diffuse spheres, and a path-traced diffuse shader that
-gathers indirect light. This document describes some of the theory and the
+gathers indirect light. This page describes some of the theory and the
 implementation found in the source code.
+
+![Fresnel Random Spheres Caustics — 3840×2160 final render](renderings/fresnel_caustic_final.png)
+
+## Reference render
+
+The image above was produced with the following command. Flags and scene
+parameters are sorted alphabetically for readability:
+
+```sh
+./src/raytracer -p fresnel_random_spheres \
+  --caustic-blur 1 \
+  --caustic-extent 24 \
+  --caustic-grid 8192 \
+  --height 2160 \
+  --photons 10000000 \
+  --rays-per-pixel 128 \
+  --reflect-depth 3 \
+  --shader diffuse \
+  --shadows on \
+  --width 3840 \
+  --scene-param cam_back=16.0 \
+  --scene-param cam_height=6.0 \
+  --scene-param floor_z=2.0 \
+  --scene-param number_spheres=30 \
+  --scene-param sphere_seed=43 \
+  --scene-param water_amplitude=0.3 \
+  --scene-param water_frequency=.75 \
+  --scene-param water_resolution=512 \
+  --scene-param water_size=24 \
+  --scene-param water_z=4.0 \
+  > out.png
+```
+
+### Parameter reference
+
+**Renderer flags**
+
+| Flag | Value | Meaning |
+|---|---|---|
+| `-p` | `fresnel_random_spheres` | Scene preset (water + random mirror/diffuse spheres + caustics). |
+| `--shader` | `diffuse` | Path-traced diffuse shader (`PATH_DIFFUSE`); gathers one-bounce indirect light and adds caustics on `is_caustic_receiver` surfaces. |
+| `--width` / `--height` | `3840` / `2160` | Output resolution (4K UHD). |
+| `--rays-per-pixel` | `128` | Jittered AA + path-tracing samples per pixel; averaged in `traceScene`. |
+| `--reflect-depth` | `3` | Maximum recursion depth for mirror reflection and dielectric reflect/refract branches. |
+| `--shadows` | `on` | Enables shadow rays in the direct-lighting term. |
+| `--photons` | `10,000,000` | Photons emitted from each light during the forward photon pre-pass. |
+| `--caustic-extent` | `24` | Side length (world units) of the square XY region the caustics map covers, centered on the origin. |
+| `--caustic-grid` | `8192` | Caustics-map resolution (8192 × 8192 cells); each cell accumulates vector flux. |
+| `--caustic-blur` | `1` | Number of separable box-blur passes over the caustics map before lookup. |
+
+**Scene parameters**
+
+| `--scene-param` | Value | Meaning |
+|---|---|---|
+| `cam_back` | `16.0` | Camera distance back from the origin along the viewing axis. |
+| `cam_height` | `6.0` | Camera Z (height above the floor in this Z-up scene). |
+| `floor_z` | `2.0` | Z height of the diffuse floor plane (caustic receiver). |
+| `number_spheres` | `30` | Sphere count placed via non-overlapping rejection sampling on the floor. |
+| `sphere_seed` | `43` | RNG seed for sphere positions / colours / mirror selection — fixes the layout. |
+| `water_amplitude` | `0.3` | Vertical scale of the Perlin displacement applied to the water surface. |
+| `water_frequency` | `0.75` | XY frequency multiplier into the Perlin noise field — higher = finer ripples. |
+| `water_resolution` | `512` | Water mesh subdivisions per side (512 × 512 cells → ~524k triangles). |
+| `water_size` | `24` | Water mesh side length in world units. |
+| `water_z` | `4.0` | Mean Z of the water surface (above the floor; spheres half-submerged). |
+
+### Performance
+
+This 3840 × 2160 render with 10M photons and 128 rays/pixel completed in
+**33.61 minutes** wall-clock. The traced workload is parallelised across
+**8 CPU threads**, and primary/secondary ray traversal is accelerated by a
+**bounding-volume hierarchy (BVH)** built over the scene primitives — without
+the BVH, the half-million-triangle water mesh alone would dominate cost on
+every ray. Multi-threading covers both the forward photon pre-pass and the
+camera-ray pass; each thread independently shades a tile of the framebuffer
+and accumulates photons into the shared `CausticsMap`.
 
 ## Scene layout
 
