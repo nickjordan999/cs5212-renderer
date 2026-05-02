@@ -4,6 +4,7 @@
 #include "vec.h"
 #include "Ray.h"
 #include "HitRecord.h"
+#include "AABB.h"
 #include <array>
 #include <optional>
 #include <cmath>
@@ -79,6 +80,24 @@ public:
         bool is_front_face = ray.getDirection().dot(face_normal) < 0.0f;
 
         return HitRecord{t, point, hit_normal, material, is_front_face};
+    }
+
+    // Axis-aligned bounding box over the three vertices, padded by a tiny
+    // epsilon so axis-aligned triangles (zero extent on one axis) still produce
+    // a non-degenerate slab for BVH traversal.
+    AABB bounds() const {
+        AABB box;
+        box.expand(v0);
+        box.expand(v1);
+        box.expand(v2);
+        const float eps = 1e-4f;
+        for (int i = 0; i < 3; ++i) {
+            if (box.max[i] - box.min[i] < eps) {
+                box.min[i] -= eps * 0.5f;
+                box.max[i] += eps * 0.5f;
+            }
+        }
+        return box;
     }
 
     vec3 getV0() const { return v0; }

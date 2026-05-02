@@ -7,6 +7,7 @@
 #include "Light.h"
 #include "Camera.h"
 #include "Solid.h"
+#include "BVH.h"
 #include <vector>
 #include <optional>
 #include <memory>
@@ -87,6 +88,14 @@ public:
         return lights;
     }
 
+    // Build the triangle BVH. Call once after all primitives have been added
+    // (e.g. after a preset finishes populating the scene). Spheres and planes
+    // are still scanned linearly — usually a small handful per scene, so the
+    // BVH overhead isn't worth it for them.
+    void buildAccelerator() {
+        triangle_bvh.build(triangles);
+    }
+
     // Test whether any object occludes the ray within [0.001, maxDist).
     // Used for shadow rays: origin is a surface point, direction points at a light,
     // and maxDist is the distance to that light.
@@ -95,9 +104,7 @@ public:
         for (const auto& sphere : spheres) {
             if (sphere.intersect(ray, t_min, maxDist).has_value()) return true;
         }
-        for (const auto& triangle : triangles) {
-            if (triangle.intersect(ray, t_min, maxDist).has_value()) return true;
-        }
+        if (triangle_bvh.isOccluded(ray, t_min, maxDist, triangles)) return true;
         for (const auto& plane : planes) {
             if (plane.intersect(ray, t_min, maxDist).has_value()) return true;
         }
@@ -111,7 +118,6 @@ public:
         float closest_t = 1e6f;
         std::optional<HitRecord> closest_hit;
 
-        // Check intersection with all spheres
         for (const auto& sphere : spheres) {
             auto hit = sphere.intersect(ray, 0.001f, closest_t);
             if (hit.has_value()) {
@@ -120,16 +126,10 @@ public:
             }
         }
 
-        // Check intersection with all triangles
-        for (const auto& triangle : triangles) {
-            auto hit = triangle.intersect(ray, 0.001f, closest_t);
-            if (hit.has_value()) {
-                closest_t = hit->t;
-                closest_hit = hit;
-            }
-        }
+        // BVH narrows closest_t in place as it finds triangle hits.
+        auto tri_hit = triangle_bvh.closestHit(ray, 0.001f, closest_t, triangles);
+        if (tri_hit.has_value()) closest_hit = tri_hit;
 
-        // Check intersection with all planes
         for (const auto& plane : planes) {
             auto hit = plane.intersect(ray, 0.001f, closest_t);
             if (hit.has_value()) {
@@ -138,7 +138,6 @@ public:
             }
         }
 
-        // Return material color if we hit something, otherwise background
         if (closest_hit.has_value()) {
             return closest_hit->material.color;
         } else {
@@ -152,7 +151,6 @@ public:
         float closest_t = 1e6f;
         std::optional<HitRecord> closest_hit;
 
-        // Check intersection with all spheres
         for (const auto& sphere : spheres) {
             auto hit = sphere.intersect(ray, 0.001f, closest_t);
             if (hit.has_value()) {
@@ -161,16 +159,9 @@ public:
             }
         }
 
-        // Check intersection with all triangles
-        for (const auto& triangle : triangles) {
-            auto hit = triangle.intersect(ray, 0.001f, closest_t);
-            if (hit.has_value()) {
-                closest_t = hit->t;
-                closest_hit = hit;
-            }
-        }
+        auto tri_hit = triangle_bvh.closestHit(ray, 0.001f, closest_t, triangles);
+        if (tri_hit.has_value()) closest_hit = tri_hit;
 
-        // Check intersection with all planes
         for (const auto& plane : planes) {
             auto hit = plane.intersect(ray, 0.001f, closest_t);
             if (hit.has_value()) {
@@ -199,6 +190,7 @@ private:
     std::shared_ptr<Camera> camera;
     vec3 backgroundColor;
     bool hasCustomBackground;
+    BVH triangle_bvh;  // Built by buildAccelerator() after triangles populated.
 };
 
 #endif // SCENE_H

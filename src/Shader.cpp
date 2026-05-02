@@ -228,7 +228,7 @@ void Shader::buildCausticsMap(CausticsMap &map, int numPhotons, int maxBounces) 
 
     for (const auto &light : lights) {
       vec3 light_pos = light.getPosition();
-      vec3 base_power = light.getIntensity() * (TWO_PI / static_cast<float>(numPhotons));
+      vec3 base_power = light.getPhotonIntensity() * (TWO_PI / static_cast<float>(numPhotons));
 
       for (int i = start; i < end; ++i) {
         vec3 dir = sampleLowerHemisphere(rng, dist);

@@ -179,6 +179,11 @@ int main(int argc, char *argv[])
     Scene scene;
     scene = loadScene(scene_preset, scene_params, datafile);
 
+    // Build the triangle BVH now that all primitives are in. Linear-scan
+    // intersection without it is O(triangles) per ray — fine for handfuls,
+    // but disastrous for the 8K+ triangle water surface in fresnel_caustic.
+    scene.buildAccelerator();
+
     // Update camera resolution to match requested dimensions and focal length
     // auto camera_ptr = std::make_shared<PerspectiveBasicCamera>(
     //     vec3(0.0f, 0.0f, 3.0f), vec3(0.0f, 0.0f, -1.0f), focal_length,

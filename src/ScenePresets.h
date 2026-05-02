@@ -940,9 +940,10 @@ public:
 
     Scene scene;
 
-    const float light_height    = P("light_height", 8.0f);
-    const float light_intensity = P("light_intensity", 50.0f);
-    const float water_size      = P("water_size", 12.0f);
+    const float light_height       = P("light_height", 8.0f);
+    const float light_intensity    = P("light_intensity", 1.0f);
+    const float photon_intensity_x = P("photon_intensity_multiplier", 50.0f);
+    const float water_size         = P("water_size", 12.0f);
     const int   N               = static_cast<int>(P("water_resolution", 64.0f));
     const float water_amplitude = P("water_amplitude", 0.15f);
     const float water_frequency = P("water_frequency", 1.5f);
@@ -957,7 +958,8 @@ public:
     scene.setBackgroundColor(vec3(0.02f, 0.04f, 0.08f));
 
     scene.addLight(Light(vec3(0.0f, 0.0f, light_height),
-                         vec3(light_intensity, light_intensity, light_intensity)));
+                         vec3(light_intensity, light_intensity, light_intensity),
+                         photon_intensity_x));
 
     // Water surface (same heightfield construction as createFresnelCausticScene).
     PerlinNoise pn(seed);
@@ -1018,11 +1020,12 @@ public:
                          vec3(0.0f, 0.0f, 1.0f),
                          floor_mat));
 
-    // Random spheres sit on the floor with radii chosen so each one's top
-    // (z = floor_z + 2*radius) is above water_z — ensuring partial coverage.
+    // Random spheres sit on the floor. Radii span a wide range (mean ~0.7 *
+    // water_depth) so the scene has noticeable size variety; some spheres
+    // poke above the water surface, others stay fully submerged.
     const float water_depth = std::max(0.1f, water_z - floor_z);
-    const float radius_min = P("sphere_radius_min", water_depth * 0.55f);
-    const float radius_max = P("sphere_radius_max", water_depth * 0.85f);
+    const float radius_min = P("sphere_radius_min", water_depth * 0.40f);
+    const float radius_max = P("sphere_radius_max", water_depth * 1.00f);
     const float placement_half = std::max(0.5f, half - radius_max - 0.25f);
 
     std::mt19937 rng(sphere_seed);
@@ -1055,9 +1058,13 @@ public:
 
         placed.push_back({ x, y, radius });
         vec3 center(x, y, floor_z + radius);
-        Material sphere_mat(HSLColor(hueDist(rng), 1.0f, 0.5f).toRgb(), ShaderType::DIFFUSE);
-        sphere_mat.is_caustic_receiver = true;
-        scene.addSphere(Sphere(center, radius, sphere_mat));
+        if (i % 6 == 0) {
+          scene.addSphere(Sphere(center, radius, Material::Mirror()));
+        } else {
+          Material sphere_mat(HSLColor(hueDist(rng), 1.0f, 0.5f).toRgb(), ShaderType::DIFFUSE);
+          sphere_mat.is_caustic_receiver = true;
+          scene.addSphere(Sphere(center, radius, sphere_mat));
+        }
         ok = true;
         break;
       }
