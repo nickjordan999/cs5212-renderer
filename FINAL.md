@@ -125,3 +125,21 @@ computes direct lighting + caustics. Combined with anti-aliased ray batches per 
 illumination — visible as colour bleeding from one diffuse sphere to its
 neighbours. The recursion is bounded by `maxDepth` so terminating rays
 return the sky-gradient background defined on the scene.
+
+## Parameter sweep
+
+The grid below sweeps four scene parameters one at a time off a shared base
+configuration. Each column varies a single parameter across six values; all
+other parameters are held at their base values (`water_frequency=0.75`,
+`water_amplitude=0.3`, `cam_height=6.0`, `photons=5,000,000`). Renders are
+800×800 with 64 rays per pixel, reflection depth 3, shadows on, and a
+4096-cell caustics grid over a 24-unit extent.
+
+| # | water_frequency | water_amplitude | cam_height | photons |
+|---|-----------------|-----------------|------------|---------|
+| 1 | ![](renderings/water_frequency_0.25.png) <br> `0.25` | ![](renderings/water_amplitude_0.1.png) <br> `0.1` | ![](renderings/cam_height_2.0.png) <br> `2.0` | ![](renderings/photons_10000.png) <br> `10,000` |
+| 2 | ![](renderings/water_frequency_0.50.png) <br> `0.50` | ![](renderings/water_amplitude_0.3.png) <br> `0.3` | ![](renderings/cam_height_3.0.png) <br> `3.0` | ![](renderings/photons_100000.png) <br> `100,000` |
+| 3 | ![](renderings/water_frequency_0.75.png) <br> `0.75` | ![](renderings/water_amplitude_0.5.png) <br> `0.5` | ![](renderings/cam_height_4.5.png) <br> `4.5` | ![](renderings/photons_500000.png) <br> `500,000` |
+| 4 | ![](renderings/water_frequency_1.00.png) <br> `1.00` | ![](renderings/water_amplitude_0.8.png) <br> `0.8` | ![](renderings/cam_height_6.0.png) <br> `6.0` | ![](renderings/photons_1000000.png) <br> `1,000,000` |
+| 5 | ![](renderings/water_frequency_1.50.png) <br> `1.50` | ![](renderings/water_amplitude_1.1.png) <br> `1.1` | ![](renderings/cam_height_7.0.png) <br> `7.0` | ![](renderings/photons_5000000.png) <br> `5,000,000` |
+| 6 | ![](renderings/water_frequency_2.00.png) <br> `2.00` | ![](renderings/water_amplitude_1.5.png) <br> `1.5` | ![](renderings/cam_height_8.0.png) <br> `8.0` | ![](renderings/photons_10000000.png) <br> `10,000,000` |
