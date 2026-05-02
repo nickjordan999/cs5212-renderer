@@ -955,54 +955,66 @@ public:
     const int   numSpheres      = static_cast<int>(P("number_spheres", 8.0f));
     const uint32_t sphere_seed  = static_cast<uint32_t>(P("sphere_seed", static_cast<float>(seed)));
 
-    scene.setBackgroundColor(vec3(0.02f, 0.04f, 0.08f));
+    // Daytime sky gradient (Z-up): saturated blue at zenith, hazy pale blue near
+    // the horizon — picked up in mirror sphere and water reflections too.
+    scene.setBackgroundGradient(
+      vec3(0.30f, 0.55f, 0.95f),
+      vec3(0.80f, 0.90f, 1.00f),
+      vec3(0.55f, 0.60f, 0.65f),
+      vec3(0.0f, 0.0f, 1.0f));
 
     scene.addLight(Light(vec3(0.0f, 0.0f, light_height),
                          vec3(light_intensity, light_intensity, light_intensity),
                          photon_intensity_x));
 
-    // Water surface (same heightfield construction as createFresnelCausticScene).
+    // Water surface — rectangular 2:1, twice as wide in X as in Y. Resolution scales
+    // with extent so triangle density stays uniform.
     PerlinNoise pn(seed);
-    const float half = water_size * 0.5f;
-    const float dx = water_size / static_cast<float>(N);
-    const float dy = water_size / static_cast<float>(N);
+    const float water_size_x = water_size * 2.0f;
+    const float water_size_y = water_size;
+    const float half_x = water_size_x * 0.5f;
+    const float half_y = water_size_y * 0.5f;
+    const int Nx = N * 2;
+    const int Ny = N;
+    const float dx = water_size_x / static_cast<float>(Nx);
+    const float dy = water_size_y / static_cast<float>(Ny);
 
-    std::vector<std::vector<float>> heights(N + 1, std::vector<float>(N + 1, 0.0f));
-    for (int i = 0; i <= N; ++i) {
-      for (int j = 0; j <= N; ++j) {
-        float x = -half + dx * static_cast<float>(i);
-        float y = -half + dy * static_cast<float>(j);
+    std::vector<std::vector<float>> heights(Nx + 1, std::vector<float>(Ny + 1, 0.0f));
+    for (int i = 0; i <= Nx; ++i) {
+      for (int j = 0; j <= Ny; ++j) {
+        float x = -half_x + dx * static_cast<float>(i);
+        float y = -half_y + dy * static_cast<float>(j);
         heights[i][j] = water_z + water_amplitude *
                         pn.noise2D(x * water_frequency, y * water_frequency);
       }
     }
 
-    std::vector<std::vector<vec3>> verts(N + 1, std::vector<vec3>(N + 1));
-    for (int i = 0; i <= N; ++i) {
-      for (int j = 0; j <= N; ++j) {
-        float x = -half + dx * static_cast<float>(i);
-        float y = -half + dy * static_cast<float>(j);
+    std::vector<std::vector<vec3>> verts(Nx + 1, std::vector<vec3>(Ny + 1));
+    for (int i = 0; i <= Nx; ++i) {
+      for (int j = 0; j <= Ny; ++j) {
+        float x = -half_x + dx * static_cast<float>(i);
+        float y = -half_y + dy * static_cast<float>(j);
         verts[i][j] = vec3(x, y, heights[i][j]);
       }
     }
 
-    std::vector<std::vector<vec3>> normals(N + 1, std::vector<vec3>(N + 1));
-    for (int i = 0; i <= N; ++i) {
-      for (int j = 0; j <= N; ++j) {
+    std::vector<std::vector<vec3>> normals(Nx + 1, std::vector<vec3>(Ny + 1));
+    for (int i = 0; i <= Nx; ++i) {
+      for (int j = 0; j <= Ny; ++j) {
         float dh_dx, dh_dy;
         if (i == 0)        dh_dx = (heights[i + 1][j] - heights[i][j]) / dx;
-        else if (i == N)   dh_dx = (heights[i][j] - heights[i - 1][j]) / dx;
+        else if (i == Nx)  dh_dx = (heights[i][j] - heights[i - 1][j]) / dx;
         else               dh_dx = (heights[i + 1][j] - heights[i - 1][j]) / (2.0f * dx);
         if (j == 0)        dh_dy = (heights[i][j + 1] - heights[i][j]) / dy;
-        else if (j == N)   dh_dy = (heights[i][j] - heights[i][j - 1]) / dy;
+        else if (j == Ny)  dh_dy = (heights[i][j] - heights[i][j - 1]) / dy;
         else               dh_dy = (heights[i][j + 1] - heights[i][j - 1]) / (2.0f * dy);
         normals[i][j] = vec3(-dh_dx, -dh_dy, 1.0f).normalized();
       }
     }
 
     Material water = Material::Water();
-    for (int i = 0; i < N; ++i) {
-      for (int j = 0; j < N; ++j) {
+    for (int i = 0; i < Nx; ++i) {
+      for (int j = 0; j < Ny; ++j) {
         scene.addTriangle(Triangle(
           verts[i][j],   verts[i + 1][j],   verts[i + 1][j + 1],
           normals[i][j], normals[i + 1][j], normals[i + 1][j + 1],
@@ -1024,14 +1036,16 @@ public:
     // water_depth) so the scene has noticeable size variety; some spheres
     // poke above the water surface, others stay fully submerged.
     const float water_depth = std::max(0.1f, water_z - floor_z);
-    const float radius_min = P("sphere_radius_min", water_depth * 0.40f);
-    const float radius_max = P("sphere_radius_max", water_depth * 1.00f);
-    const float placement_half = std::max(0.5f, half - radius_max - 0.25f);
+    const float radius_min = P("sphere_radius_min", water_depth * 0.4f);
+    const float radius_max = P("sphere_radius_max", water_depth * 1.3f);
+    const float placement_half_x = std::max(0.5f, half_x - radius_max - 0.25f);
+    const float placement_half_y = std::max(0.5f, half_y - radius_max - 0.25f);
 
     std::mt19937 rng(sphere_seed);
     std::uniform_real_distribution<float> radiusDist(radius_min, radius_max);
     std::uniform_real_distribution<float> hueDist(0.0f, 360.0f);
-    std::uniform_real_distribution<float> posDist(-placement_half, placement_half);
+    std::uniform_real_distribution<float> posDistX(-placement_half_x, placement_half_x);
+    std::uniform_real_distribution<float> posDistY(-placement_half_y, placement_half_y);
 
     struct Placed { float x, y, r; };
     std::vector<Placed> placed;
@@ -1042,8 +1056,8 @@ public:
       bool ok = false;
       for (int attempt = 0; attempt < maxAttempts; ++attempt) {
         float radius = radiusDist(rng);
-        float x = posDist(rng);
-        float y = posDist(rng);
+        float x = posDistX(rng);
+        float y = posDistY(rng);
 
         bool overlaps = false;
         for (const auto &p : placed) {
@@ -1058,7 +1072,7 @@ public:
 
         placed.push_back({ x, y, radius });
         vec3 center(x, y, floor_z + radius);
-        if (i % 6 == 0) {
+        if (i % 4 == 0) {
           scene.addSphere(Sphere(center, radius, Material::Mirror()));
         } else {
           Material sphere_mat(HSLColor(hueDist(rng), 1.0f, 0.5f).toRgb(), ShaderType::DIFFUSE);
@@ -1072,7 +1086,7 @@ public:
     }
 
     vec3 cam_pos(0.0f, -cam_back, cam_height);
-    vec3 cam_target(0.0f, 0.0f, floor_z * 0.5f);
+    vec3 cam_target(0.0f, 0.0f, floor_z);
     vec3 cam_dir = (cam_target - cam_pos).normalized();
     scene.setCamera(std::make_shared<PerspectiveBasicCamera>(cam_pos, cam_dir, 1.5f));
 

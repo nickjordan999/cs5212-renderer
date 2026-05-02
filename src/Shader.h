@@ -35,7 +35,7 @@ protected:
          const vec3 &defaultBackground, bool shadows = true, int maxDepth = 5,
          int numThreads = 0)
     : scene(scene),
-      background(scene.getBackgroundColor().value_or(defaultBackground)),
+      defaultBackground(defaultBackground),
       shadows(shadows),
       defaultShaderType(defaultShaderType),
       maxDepth(maxDepth),
@@ -43,7 +43,7 @@ protected:
       causticsMap(nullptr) {}
 
   const Scene &scene;
-  vec3 background;
+  vec3 defaultBackground;
   bool shadows;
 
 private:

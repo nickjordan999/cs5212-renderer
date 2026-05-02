@@ -14,17 +14,40 @@
 
 class Scene {
 public:
-    Scene() : camera(nullptr), backgroundColor(0.0f, 0.0f, 0.0f), hasCustomBackground(false) {}
+    enum class BackgroundMode { None, Solid, Gradient };
 
-    // Set the background color for this scene
+    Scene() : camera(nullptr), bgMode(BackgroundMode::None),
+              bgTop(0.0f, 0.0f, 0.0f), bgHorizon(0.0f, 0.0f, 0.0f), bgBottom(0.0f, 0.0f, 0.0f),
+              bgUp(0.0f, 1.0f, 0.0f) {}
+
+    // Set a flat background color for this scene
     void setBackgroundColor(const vec3& color) {
-        backgroundColor = color;
-        hasCustomBackground = true;
+        bgMode = BackgroundMode::Solid;
+        bgTop = bgHorizon = bgBottom = color;
     }
 
-    // Get the background color (returns nullopt if not explicitly set)
+    // Three-color vertical gradient. The visible color is chosen by projecting the ray
+    // direction onto up_axis: t = dir · up ∈ [-1, 1]. t > 0 mixes horizon→top; t < 0
+    // mixes horizon→bottom. up_axis is normalized internally.
+    void setBackgroundGradient(const vec3& top, const vec3& horizon, const vec3& bottom,
+                               const vec3& up_axis) {
+        bgMode = BackgroundMode::Gradient;
+        bgTop = top; bgHorizon = horizon; bgBottom = bottom;
+        bgUp = up_axis.normalized();
+    }
+
+    // Sample background for a ray. Returns fallback if scene has no background set.
+    vec3 backgroundFor(const Ray& ray, const vec3& fallback) const {
+        if (bgMode == BackgroundMode::None) return fallback;
+        if (bgMode == BackgroundMode::Solid) return bgTop;
+        float t = ray.getDirection().dot(bgUp);
+        if (t >= 0.0f) return bgHorizon * (1.0f - t) + bgTop * t;
+        return bgHorizon * (1.0f + t) + bgBottom * (-t);
+    }
+
+    // Solid-color accessor retained for callers that only need a flat color.
     std::optional<vec3> getBackgroundColor() const {
-        if (hasCustomBackground) return backgroundColor;
+        if (bgMode == BackgroundMode::Solid) return bgTop;
         return std::nullopt;
     }
 
@@ -188,8 +211,9 @@ private:
     std::vector<Plane> planes;
     std::vector<Light> lights;
     std::shared_ptr<Camera> camera;
-    vec3 backgroundColor;
-    bool hasCustomBackground;
+    BackgroundMode bgMode;
+    vec3 bgTop, bgHorizon, bgBottom;
+    vec3 bgUp;
     BVH triangle_bvh;  // Built by buildAccelerator() after triangles populated.
 };
 

@@ -132,10 +132,10 @@ vec3 Shader::shadeRay(const Ray &ray) const
 
 vec3 Shader::shadeRay(const Ray &ray, int depth) const
 {
-  if (depth <= 0) return background;
+  if (depth <= 0) return scene.backgroundFor(ray, defaultBackground);
 
   auto hit = scene.traceRayWithHitInfo(ray);
-  if (!hit.has_value()) return background;
+  if (!hit.has_value()) return scene.backgroundFor(ray, defaultBackground);
 
   // Dispatch based on per-object shader override, falling back to this shader's default
   switch (hit->material.shaderType.value_or(defaultShaderType)) {
@@ -190,7 +190,7 @@ vec3 Shader::shadeRay(const Ray &ray, int depth) const
     return refl_color * kr + refr_color * (1.0f - kr);
   }
   }
-  return background;
+  return scene.backgroundFor(ray, defaultBackground);
 }
 
 // --- Photon emission for caustics ---
