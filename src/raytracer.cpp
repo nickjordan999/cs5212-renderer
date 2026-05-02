@@ -41,6 +41,7 @@ void printUsage(const std::string &programName, const po::options_description &d
   std::cerr << "  shadow_demo          - Single sphere on a checkerboard plane with three lights casting shadows" << std::endl;
   std::cerr << "  trilist              - Load triangles from a data file (requires --datafile)" << std::endl;
   std::cerr << "  fresnel_caustic      - Perlin-noise water surface over a matte floor (use --photons for caustics)" << std::endl;
+  std::cerr << "  fresnel_random_spheres - Random spheres half-submerged in a Perlin-noise water surface (use --photons for caustics)" << std::endl;
   std::cerr << std::endl;
   std::cerr << "Available Shaders:" << std::endl;
   std::cerr << "  render               - Renders scene with material colors (default)" << std::endl;

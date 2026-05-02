@@ -411,7 +411,7 @@ public:
       vec3(0.0f, 4.0f, 0.0f), vec3(0.0f, -0.35f, -1.0f), 2.0f));
 
     // Lights
-    scene.addLight(Light(vec3(5.0f, 10.0f, 5.0f), vec3(0.5f, 0.5f, 0.5f)));
+    scene.addLight(Light(vec3(5.0f, 10.0f, 5.0f), vec3(0.8f, 0.8f, 0.8f)));
     scene.addLight(Light(vec3(-8.0f, 8.0f, -20.0f), vec3(0.7f, 0.7f, 0.7f)));
 
     return scene;
@@ -781,6 +781,8 @@ public:
       return createRandomSpheresScene(params);
     } else if (preset_name == "fresnel_caustic") {
       return createFresnelCausticScene(params);
+    } else if (preset_name == "fresnel_random_spheres") {
+      return createFresnelRandomSpheresScene(params);
     } else {
       throw std::invalid_argument("Unknown scene preset: " + preset_name);
     }
@@ -912,6 +914,156 @@ public:
     scene.addSphere(Sphere(vec3(0.0f, 0.0f, ball_height), ball_radius, ball_mat));
 
     // Camera: pulled back along -Y, elevated on +Z, looking toward origin/floor.
+    vec3 cam_pos(0.0f, -cam_back, cam_height);
+    vec3 cam_target(0.0f, 0.0f, floor_z * 0.5f);
+    vec3 cam_dir = (cam_target - cam_pos).normalized();
+    scene.setCamera(std::make_shared<PerspectiveBasicCamera>(cam_pos, cam_dir, 1.5f));
+
+    return scene;
+  }
+
+  // Combination of createRandomSpheresScene and createFresnelCausticScene:
+  // a Perlin-displaced water surface with random spheres resting on the floor
+  // beneath, sized so each one is partially covered by — pokes through — the
+  // water. Uses the fresnel preset's Z-up convention.
+  //
+  // Params: union of createFresnelCausticScene's params (excluding the single
+  // submerged ball params) plus
+  //   number_spheres — how many random spheres to place (default 8)
+  //   sphere_seed    — seed used for sphere placement (default = seed)
+  static Scene createFresnelRandomSpheresScene(const SceneParams &params = {})
+  {
+    auto P = [&](const std::string &k, float def) {
+      auto it = params.find(k);
+      return it == params.end() ? def : it->second;
+    };
+
+    Scene scene;
+
+    const float light_height    = P("light_height", 8.0f);
+    const float light_intensity = P("light_intensity", 50.0f);
+    const float water_size      = P("water_size", 12.0f);
+    const int   N               = static_cast<int>(P("water_resolution", 64.0f));
+    const float water_amplitude = P("water_amplitude", 0.15f);
+    const float water_frequency = P("water_frequency", 1.5f);
+    const float water_z         = P("water_z", 0.0f);
+    const float floor_z         = P("floor_z", -2.0f);
+    const uint32_t seed         = static_cast<uint32_t>(P("seed", 42.0f));
+    const float cam_height      = P("cam_height", 6.0f);
+    const float cam_back        = P("cam_back", 4.0f);
+    const int   numSpheres      = static_cast<int>(P("number_spheres", 8.0f));
+    const uint32_t sphere_seed  = static_cast<uint32_t>(P("sphere_seed", static_cast<float>(seed)));
+
+    scene.setBackgroundColor(vec3(0.02f, 0.04f, 0.08f));
+
+    scene.addLight(Light(vec3(0.0f, 0.0f, light_height),
+                         vec3(light_intensity, light_intensity, light_intensity)));
+
+    // Water surface (same heightfield construction as createFresnelCausticScene).
+    PerlinNoise pn(seed);
+    const float half = water_size * 0.5f;
+    const float dx = water_size / static_cast<float>(N);
+    const float dy = water_size / static_cast<float>(N);
+
+    std::vector<std::vector<float>> heights(N + 1, std::vector<float>(N + 1, 0.0f));
+    for (int i = 0; i <= N; ++i) {
+      for (int j = 0; j <= N; ++j) {
+        float x = -half + dx * static_cast<float>(i);
+        float y = -half + dy * static_cast<float>(j);
+        heights[i][j] = water_z + water_amplitude *
+                        pn.noise2D(x * water_frequency, y * water_frequency);
+      }
+    }
+
+    std::vector<std::vector<vec3>> verts(N + 1, std::vector<vec3>(N + 1));
+    for (int i = 0; i <= N; ++i) {
+      for (int j = 0; j <= N; ++j) {
+        float x = -half + dx * static_cast<float>(i);
+        float y = -half + dy * static_cast<float>(j);
+        verts[i][j] = vec3(x, y, heights[i][j]);
+      }
+    }
+
+    std::vector<std::vector<vec3>> normals(N + 1, std::vector<vec3>(N + 1));
+    for (int i = 0; i <= N; ++i) {
+      for (int j = 0; j <= N; ++j) {
+        float dh_dx, dh_dy;
+        if (i == 0)        dh_dx = (heights[i + 1][j] - heights[i][j]) / dx;
+        else if (i == N)   dh_dx = (heights[i][j] - heights[i - 1][j]) / dx;
+        else               dh_dx = (heights[i + 1][j] - heights[i - 1][j]) / (2.0f * dx);
+        if (j == 0)        dh_dy = (heights[i][j + 1] - heights[i][j]) / dy;
+        else if (j == N)   dh_dy = (heights[i][j] - heights[i][j - 1]) / dy;
+        else               dh_dy = (heights[i][j + 1] - heights[i][j - 1]) / (2.0f * dy);
+        normals[i][j] = vec3(-dh_dx, -dh_dy, 1.0f).normalized();
+      }
+    }
+
+    Material water = Material::Water();
+    for (int i = 0; i < N; ++i) {
+      for (int j = 0; j < N; ++j) {
+        scene.addTriangle(Triangle(
+          verts[i][j],   verts[i + 1][j],   verts[i + 1][j + 1],
+          normals[i][j], normals[i + 1][j], normals[i + 1][j + 1],
+          water));
+        scene.addTriangle(Triangle(
+          verts[i][j],   verts[i + 1][j + 1],   verts[i][j + 1],
+          normals[i][j], normals[i + 1][j + 1], normals[i][j + 1],
+          water));
+      }
+    }
+
+    Material floor_mat(vec3(0.85f, 0.85f, 0.85f), ShaderType::DIFFUSE);
+    floor_mat.is_caustic_receiver = true;
+    scene.addPlane(Plane(vec3(0.0f, 0.0f, floor_z),
+                         vec3(0.0f, 0.0f, 1.0f),
+                         floor_mat));
+
+    // Random spheres sit on the floor with radii chosen so each one's top
+    // (z = floor_z + 2*radius) is above water_z — ensuring partial coverage.
+    const float water_depth = std::max(0.1f, water_z - floor_z);
+    const float radius_min = P("sphere_radius_min", water_depth * 0.55f);
+    const float radius_max = P("sphere_radius_max", water_depth * 0.85f);
+    const float placement_half = std::max(0.5f, half - radius_max - 0.25f);
+
+    std::mt19937 rng(sphere_seed);
+    std::uniform_real_distribution<float> radiusDist(radius_min, radius_max);
+    std::uniform_real_distribution<float> hueDist(0.0f, 360.0f);
+    std::uniform_real_distribution<float> posDist(-placement_half, placement_half);
+
+    struct Placed { float x, y, r; };
+    std::vector<Placed> placed;
+    placed.reserve(numSpheres);
+
+    const int maxAttempts = 200;
+    for (int i = 0; i < numSpheres; ++i) {
+      bool ok = false;
+      for (int attempt = 0; attempt < maxAttempts; ++attempt) {
+        float radius = radiusDist(rng);
+        float x = posDist(rng);
+        float y = posDist(rng);
+
+        bool overlaps = false;
+        for (const auto &p : placed) {
+          float ddx = x - p.x;
+          float ddy = y - p.y;
+          if (ddx * ddx + ddy * ddy < (radius + p.r) * (radius + p.r)) {
+            overlaps = true;
+            break;
+          }
+        }
+        if (overlaps) continue;
+
+        placed.push_back({ x, y, radius });
+        vec3 center(x, y, floor_z + radius);
+        Material sphere_mat(HSLColor(hueDist(rng), 1.0f, 0.5f).toRgb(), ShaderType::DIFFUSE);
+        sphere_mat.is_caustic_receiver = true;
+        scene.addSphere(Sphere(center, radius, sphere_mat));
+        ok = true;
+        break;
+      }
+      if (!ok) break;
+    }
+
     vec3 cam_pos(0.0f, -cam_back, cam_height);
     vec3 cam_target(0.0f, 0.0f, floor_z * 0.5f);
     vec3 cam_dir = (cam_target - cam_pos).normalized();
